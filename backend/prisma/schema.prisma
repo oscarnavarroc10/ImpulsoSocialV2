@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum MasterServiceStatus {
+  draft
+  active
+  deprecated
+}
+
+model MasterService {
+  id                 String               @id @default(cuid())
+  title              String
+  description        String
+  categoryId         String
+  socialNetwork      String
+  providerCostAmount Int
+  providerCostCurrency String
+  defaultSellingPriceAmount Int
+  defaultSellingPriceCurrency String
+  isVisible          Boolean
+  status             MasterServiceStatus
+  provenanceRef      String?
+}
+
+model ProviderService {
+  id             String   @id @default(cuid())
+  providerOrigin String
+  externalId     String
+  rawPayload     Json
+  importTimestamp DateTime
+  metadata       Json?
+
+  @@unique([providerOrigin, externalId])
+}
+
+model StagedService {
+  id                String   @id @default(cuid())
+  providerServiceId String
+  ingestedAt        DateTime
+  reviewStatus      String
+  proposedTitle     String?
+  proposedDescription String?
+  proposedCategoryId String?
+  proposedSocialNetwork String?
+}
+
+model Category {
+  id          String @id @default(cuid())
+  name        String
+  description String?
+}
+
+model TenantServiceOverride {
+  id                   String @id @default(cuid())
+  tenantId             String
+  masterServiceId      String
+  isEnabled            Boolean
+  sellingPriceAmount   Int?
+  sellingPriceCurrency String?
+
+  @@unique([tenantId, masterServiceId])
+}
+
+model MasterCatalogSnapshot {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  createdBy  String
+  status     String
+  publishedAt DateTime?
+}
+
+model MasterCatalogSnapshotItem {
+  id                String @id @default(cuid())
+  masterServiceId   String
+  title             String
+  description       String
+  categoryId        String
+  categoryName      String
+  socialNetwork     String
+  sellingPriceAmount Int
+  currency          String
+  serviceStatus     String
+}
+
+model SyncJob {
+  id        String   @id @default(cuid())
+  startedAt DateTime @default(now())
+  finishedAt DateTime?
+  status    String
+  summary   Json?
+  source    String
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  actorType String
+  action    String
+  timestamp DateTime @default(now())
+  details   Json?
+}
