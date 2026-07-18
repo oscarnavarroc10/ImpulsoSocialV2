@@ -10,20 +10,20 @@
 
 ## Phase 2: Foundational Prerequisites
 
-- [ ] T006 Implement a minimal catalog authorization contract that integrates with the project’s existing authenticated-user and role mechanism; if authentication does not yet exist, expose it as an external prerequisite instead of building a new authentication system — `backend/src/modules/catalog/security/catalog-authorization.guard.ts`
-- [ ] T007 [P] Define a provider-agnostic catalog provider client interface for fetching provider services — `backend/src/modules/catalog/infrastructure/provider-catalog-client.ts`
+- [x] T006 Implement a minimal catalog authorization contract that integrates with the project’s existing authenticated-user and role mechanism; if authentication does not yet exist, expose it as an external prerequisite instead of building a new authentication system — `backend/src/modules/catalog/security/catalog-authorization.guard.ts`
+- [x] T007 [P] Define a provider-agnostic catalog provider client interface for fetching provider services — `backend/src/modules/catalog/infrastructure/provider-catalog-client.ts`
 - [ ] T008 Implement the concrete `BulkFollowsClient` using only the authentication, endpoint, request, response, timeout, retry, and pagination behavior confirmed by the actual BulkFollows API contract — `backend/src/modules/catalog/infrastructure/bulkfollows.client.ts`
 - [ ] T009 Add deterministic BulkFollows contract and response-mapping tests using fixtures or a fake HTTP transport; never call the live provider API — `backend/test/contract/catalog/bulkfollows-client.spec.ts`
-- [ ] T010 Implement the Prisma-backed `ProviderServiceRepository`, including idempotent lookup and upsert behavior based on `providerOrigin` and `externalId` — `backend/src/modules/catalog/infrastructure/provider-service.repository.ts`
-- [ ] T011 Implement the Prisma-backed `StagedServiceRepository` used by the provider import and administrative review flow — `backend/src/modules/catalog/infrastructure/staged-service.repository.ts`
-- [ ] T012 Implement the Prisma-backed `MasterServiceRepository`, preserving curated business fields separately from provider-controlled technical metadata — `backend/src/modules/catalog/infrastructure/master-service.repository.ts`
-- [ ] T013 [P] Implement reusable `AuditService` operations for import, curation, deprecation, snapshot publication, and export actions — `backend/src/modules/catalog/infrastructure/audit.service.ts`
-- [ ] T014 Implement `SyncService` using the approved in-process NestJS scheduler and an on-demand trigger; persist `SyncJob` status and summaries without introducing an event bus or external queue — `backend/src/modules/catalog/sync/sync.service.ts`
-- [ ] T015 [P] Implement DTOs and validation for the on-demand synchronization request — `backend/src/modules/catalog/application/dto/sync.dto.ts`
-- [ ] T016 [P] Implement DTOs and validation for staged-service approval and rejection with curated field edits — `backend/src/modules/catalog/application/dto/staged-curation.dto.ts`
-- [ ] T017 [P] Implement DTOs and validation for category creation and updates — `backend/src/modules/catalog/application/dto/category.dto.ts`
-- [ ] T018 [P] Implement DTOs and validation for tenant service overrides — `backend/src/modules/catalog/application/dto/tenant-service-override.dto.ts`
-- [ ] T019 [P] Implement DTOs and validation for snapshot publication — `backend/src/modules/catalog/application/dto/snapshot.dto.ts`
+- [x] T010 Implement the Prisma-backed `ProviderServiceRepository`, including idempotent lookup and upsert behavior based on `providerOrigin` and `externalId` — `backend/src/modules/catalog/infrastructure/provider-service.repository.ts`
+- [x] T011 Implement the Prisma-backed `StagedServiceRepository` used by the provider import and administrative review flow — `backend/src/modules/catalog/infrastructure/staged-service.repository.ts`
+- [x] T012 Implement the Prisma-backed `MasterServiceRepository`, preserving curated business fields separately from provider-controlled technical metadata — `backend/src/modules/catalog/infrastructure/master-service.repository.ts`
+- [x] T013 [P] Implement reusable `AuditService` operations for import, curation, deprecation, snapshot publication, and export actions — `backend/src/modules/catalog/infrastructure/audit.service.ts`
+- [x] T014 Implement `SyncService` using the approved in-process NestJS scheduler and an on-demand trigger; persist `SyncJob` status and summaries without introducing an event bus or external queue — `backend/src/modules/catalog/sync/sync.service.ts`
+- [x] T015 [P] Implement DTOs and validation for the on-demand synchronization request — `backend/src/modules/catalog/application/dto/sync.dto.ts`
+- [x] T016 [P] Implement DTOs and validation for staged-service approval and rejection with curated field edits — `backend/src/modules/catalog/application/dto/staged-curation.dto.ts`
+- [x] T017 [P] Implement DTOs and validation for category creation and updates — `backend/src/modules/catalog/application/dto/category.dto.ts`
+- [x] T018 [P] Implement DTOs and validation for tenant service overrides — `backend/src/modules/catalog/application/dto/tenant-service-override.dto.ts`
+- [x] T019 [P] Implement DTOs and validation for snapshot publication — `backend/src/modules/catalog/application/dto/snapshot.dto.ts`
 
 ## Phase 3: User Story 1 — Import and Curate Provider Services
 
