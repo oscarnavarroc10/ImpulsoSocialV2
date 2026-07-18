@@ -2,11 +2,11 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 [P] Create the required `CatalogModule` structure and NestJS module files without empty README, index, or placeholder files — `backend/src/modules/catalog/catalog.module.ts`
-- [ ] T002 [P] Add and review the approved Prisma models for `ProviderService`, `StagedService`, `MasterService`, `Category`, `TenantServiceOverride`, `MasterCatalogSnapshot`, `MasterCatalogSnapshotItem`, `SyncJob`, and `AuditLog` — `backend/prisma/schema.prisma`
-- [ ] T003 Generate the Prisma client and validate the completed Prisma schema — `backend/prisma/schema.prisma`
-- [ ] T004 Generate and validate the initial Prisma migration using the standard Prisma development workflow; document forward-fix recovery and restrict `prisma migrate reset` to local development — `backend/prisma/migrations/`
-- [ ] T005 [P] Add an environment template containing only `DATABASE_URL` and application variables already explicitly approved; do not invent BulkFollows-specific configuration — `backend/.env.example`
+- [x] T001 [P] Create the required `CatalogModule` structure and NestJS module files without empty README, index, or placeholder files — `backend/src/modules/catalog/catalog.module.ts`
+- [x] T002 [P] Add and review the approved Prisma models for `ProviderService`, `StagedService`, `MasterService`, `Category`, `TenantServiceOverride`, `MasterCatalogSnapshot`, `MasterCatalogSnapshotItem`, `SyncJob`, and `AuditLog` — `backend/prisma/schema.prisma`
+- [x] T003 Generate the Prisma client and validate the completed Prisma schema — `backend/prisma/schema.prisma`
+- [x] T004 Generate and validate the initial Prisma migration using the standard Prisma development workflow; document forward-fix recovery and restrict `prisma migrate reset` to local development — `backend/prisma/migrations/`
+- [x] T005 [P] Add an environment template containing only `DATABASE_URL` and application variables already explicitly approved; do not invent BulkFollows-specific configuration — `backend/.env.example`
 
 ## Phase 2: Foundational Prerequisites
 
