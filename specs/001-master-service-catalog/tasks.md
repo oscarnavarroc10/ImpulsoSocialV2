@@ -12,8 +12,8 @@
 
 - [x] T006 Implement a minimal catalog authorization contract that integrates with the project’s existing authenticated-user and role mechanism; if authentication does not yet exist, expose it as an external prerequisite instead of building a new authentication system — `backend/src/modules/catalog/security/catalog-authorization.guard.ts`
 - [x] T007 [P] Define a provider-agnostic catalog provider client interface for fetching provider services — `backend/src/modules/catalog/infrastructure/provider-catalog-client.ts`
-- [ ] T008 Implement the concrete `BulkFollowsClient` using only the authentication, endpoint, request, response, timeout, retry, and pagination behavior confirmed by the actual BulkFollows API contract — `backend/src/modules/catalog/infrastructure/bulkfollows.client.ts`
-- [ ] T009 Add deterministic BulkFollows contract and response-mapping tests using fixtures or a fake HTTP transport; never call the live provider API — `backend/test/contract/catalog/bulkfollows-client.spec.ts`
+- [x] T008 Implement the concrete `BulkFollowsClient` using only the authentication, endpoint, request, response, timeout, retry, and pagination behavior confirmed by the actual BulkFollows API contract — `backend/src/modules/catalog/infrastructure/bulkfollows.client.ts`
+- [x] T009 Add deterministic BulkFollows contract and response-mapping tests using fixtures or a fake HTTP transport; never call the live provider API — `backend/test/contract/catalog/bulkfollows-client.spec.ts`
 - [x] T010 Implement the Prisma-backed `ProviderServiceRepository`, including idempotent lookup and upsert behavior based on `providerOrigin` and `externalId` — `backend/src/modules/catalog/infrastructure/provider-service.repository.ts`
 - [x] T011 Implement the Prisma-backed `StagedServiceRepository` used by the provider import and administrative review flow — `backend/src/modules/catalog/infrastructure/staged-service.repository.ts`
 - [x] T012 Implement the Prisma-backed `MasterServiceRepository`, preserving curated business fields separately from provider-controlled technical metadata — `backend/src/modules/catalog/infrastructure/master-service.repository.ts`
