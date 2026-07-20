@@ -5,6 +5,7 @@ import { StagedServiceRepository } from './infrastructure/staged-service.reposit
 import { MasterServiceRepository } from './infrastructure/master-service.repository';
 import { AuditService } from './infrastructure/audit.service';
 import { SyncService } from './sync/sync.service';
+import { ImportOrchestrator } from './sync/import-orchestrator';
 import { CatalogAuthorizationGuard } from './security/catalog-authorization.guard';
 import { CATALOG_AUTHORIZATION } from './security/catalog-authorization.interface';
 import { BulkFollowsClient } from './infrastructure/bulkfollows.client';
@@ -30,6 +31,7 @@ const FailClosedAuthProvider = {
     MasterServiceRepository,
     AuditService,
     SyncService,
+    ImportOrchestrator,
     CatalogAuthorizationGuard,
     FailClosedAuthProvider,
     BulkFollowsClient,
