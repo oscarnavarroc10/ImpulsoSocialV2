@@ -1,7 +1,6 @@
-import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import type { ProviderCatalogClient } from '../infrastructure/provider-catalog-client';
-import { PROVIDER_CATALOG_CLIENT } from '../infrastructure/provider-catalog-client';
+import { ImportOrchestrator } from './import-orchestrator';
 
 @Injectable()
 export class SyncService {
@@ -9,51 +8,46 @@ export class SyncService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Optional()
-    @Inject(PROVIDER_CATALOG_CLIENT)
-    private readonly providerClient?: ProviderCatalogClient,
+    private readonly importOrchestrator: ImportOrchestrator,
   ) {}
 
   // Scheduling is intentionally not configured here — the project may add
-  // ScheduleModule integration later. The SyncService exposes an on-demand
-  // `runSync` entry point that persists SyncJob lifecycle. Since import
-  // orchestration (T020) is not implemented, `runSync` records a failed job
-  // and throws an explicit error to avoid reporting false success.
+  // ScheduleModule integration later. `runSync` is the on-demand entry point;
+  // it owns the full SyncJob lifecycle (create -> running, then a single
+  // finalizing update to either success or failure). Import orchestration is
+  // delegated to ImportOrchestrator (T020). Partial-failure aggregation
+  // within a single run belongs to T021 and is not handled here.
 
   async runSync(source: 'scheduled' | 'on-demand' = 'on-demand') {
     const job = await this.prisma.syncJob.create({
       data: { source, status: 'running', summary: {} },
     });
+
+    let summary;
     try {
-      // Import orchestration not implemented yet (T020). Persist explicit failure.
-      const summary = {
-        imported: 0,
-        updated: 0,
-        skipped: 0,
-        errors: 1,
-        message: 'import orchestration not implemented',
-      };
-      await this.prisma.syncJob.update({
-        where: { id: job.id },
-        data: { status: 'failure', summary, finishedAt: new Date() },
-      });
-      throw new Error('Import orchestration not implemented');
+      summary = await this.importOrchestrator.run();
     } catch (err) {
       this.logger.error('Sync failed', err);
-      // Ensure failure persisted (if not already)
-      try {
-        await this.prisma.syncJob.update({
-          where: { id: job.id },
-          data: {
-            status: 'failure',
-            summary: { errors: 1 },
-            finishedAt: new Date(),
-          },
-        });
-      } catch (uErr) {
-        this.logger.error('Failed to persist sync job failure', uErr);
-      }
+      await this.prisma.syncJob.update({
+        where: { id: job.id },
+        data: {
+          status: 'failure',
+          summary: { imported: 0, updated: 0, skipped: 0, errors: 1 },
+          finishedAt: new Date(),
+        },
+      });
       throw err;
     }
+
+    await this.prisma.syncJob.update({
+      where: { id: job.id },
+      data: {
+        status: 'success',
+        summary,
+        finishedAt: new Date(),
+      },
+    });
+
+    return { jobId: job.id, status: 'success' as const, summary };
   }
 }

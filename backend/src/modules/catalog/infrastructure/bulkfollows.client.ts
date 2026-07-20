@@ -25,6 +25,14 @@ export type BulkFollowsHttpTransport = (
 const defaultTransport: BulkFollowsHttpTransport = (url, init) =>
   fetch(url, init);
 
+/**
+ * Stable `providerOrigin` identifier for the BulkFollows provider, used by
+ * `ProviderServiceRepository` idempotency lookups/upserts. This project
+ * supports a single provider integration; if additional providers are added
+ * in the future, each should define its own equivalent constant.
+ */
+export const BULKFOLLOWS_PROVIDER_ORIGIN = 'bulkfollows';
+
 interface BulkFollowsRawEntry {
   service: unknown;
   name: unknown;

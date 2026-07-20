@@ -5,7 +5,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 export class StagedServiceRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createFromProvider(
+  async upsertPendingFromProvider(
     providerServiceId: string,
     payload: {
       title?: string;
@@ -14,21 +14,33 @@ export class StagedServiceRepository {
       socialNetwork?: string;
     },
   ) {
-    // Prevent duplicate pending staged entries for the same provider service
     const existing = await this.prisma.stagedService.findFirst({
-      where: { providerServiceId, reviewStatus: 'pending' },
+      where: {
+        providerServiceId,
+        reviewStatus: 'pending',
+      },
     });
-    if (existing) return existing;
+
+    const proposedData = {
+      proposedTitle: payload.title ?? null,
+      proposedDescription: payload.description ?? null,
+      proposedCategoryId: payload.categoryId ?? null,
+      proposedSocialNetwork: payload.socialNetwork ?? null,
+      ingestedAt: new Date(),
+    };
+
+    if (existing) {
+      return this.prisma.stagedService.update({
+        where: { id: existing.id },
+        data: proposedData,
+      });
+    }
 
     return this.prisma.stagedService.create({
       data: {
         providerServiceId,
-        ingestedAt: new Date(),
         reviewStatus: 'pending',
-        proposedTitle: payload.title ?? null,
-        proposedDescription: payload.description ?? null,
-        proposedCategoryId: payload.categoryId ?? null,
-        proposedSocialNetwork: payload.socialNetwork ?? null,
+        ...proposedData,
       },
     });
   }
