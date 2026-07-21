@@ -20,7 +20,15 @@ describe('SyncService', () => {
 
   it('creates a running SyncJob and invokes ImportOrchestrator', async () => {
     const { prisma } = buildFakePrisma();
-    const summary = { imported: 1, updated: 0, skipped: 0, errors: 0 };
+    const summary = {
+      total: 1,
+      imported: 1,
+      updated: 0,
+      failed: 0,
+      skipped: 0,
+      errors: 0,
+      errorSummary: [],
+    };
     const importOrchestrator = {
       run: jest.fn().mockResolvedValue(summary),
     } as any;
@@ -41,7 +49,15 @@ describe('SyncService', () => {
 
   it('finalizes a successful SyncJob with the returned summary and finishedAt', async () => {
     const { prisma, updates } = buildFakePrisma();
-    const summary = { imported: 2, updated: 1, skipped: 0, errors: 0 };
+    const summary = {
+      total: 3,
+      imported: 2,
+      updated: 1,
+      failed: 0,
+      skipped: 0,
+      errors: 0,
+      errorSummary: [],
+    };
     const importOrchestrator = {
       run: jest.fn().mockResolvedValue(summary),
     } as any;
@@ -55,6 +71,57 @@ describe('SyncService', () => {
     expect(updates[0].data.finishedAt).toBeInstanceOf(Date);
     expect(result.status).toBe('success');
     expect(result.summary).toEqual(summary);
+  });
+
+  it('finalizes a partial SyncJob when both successes and failures are present', async () => {
+    const { prisma, updates } = buildFakePrisma();
+    const summary = {
+      total: 3,
+      imported: 1,
+      updated: 1,
+      failed: 1,
+      skipped: 0,
+      errors: 1,
+      errorSummary: ['2:STAGED_SERVICE_UPSERT_FAILED'],
+    };
+    const importOrchestrator = {
+      run: jest.fn().mockResolvedValue(summary),
+    } as any;
+
+    const svc = new SyncService(prisma, importOrchestrator);
+    const result = await svc.runSync('on-demand');
+
+    expect(updates).toHaveLength(1);
+    expect(updates[0].data.status).toBe('partial');
+    expect(updates[0].data.summary).toEqual(summary);
+    expect(result.status).toBe('partial');
+  });
+
+  it('finalizes a failure SyncJob when all fetched items fail processing', async () => {
+    const { prisma, updates } = buildFakePrisma();
+    const summary = {
+      total: 2,
+      imported: 0,
+      updated: 0,
+      failed: 2,
+      skipped: 0,
+      errors: 2,
+      errorSummary: [
+        '1:PROVIDER_SERVICE_UPSERT_FAILED',
+        '2:INVALID_RAW_PAYLOAD',
+      ],
+    };
+    const importOrchestrator = {
+      run: jest.fn().mockResolvedValue(summary),
+    } as any;
+
+    const svc = new SyncService(prisma, importOrchestrator);
+    const result = await svc.runSync('on-demand');
+
+    expect(updates).toHaveLength(1);
+    expect(updates[0].data.status).toBe('failure');
+    expect(updates[0].data.summary).toEqual(summary);
+    expect(result.status).toBe('failure');
   });
 
   it('finalizes a failed SyncJob once, with a minimal failure summary, and rethrows the original error', async () => {
@@ -71,10 +138,13 @@ describe('SyncService', () => {
     expect(updates).toHaveLength(1);
     expect(updates[0].data.status).toBe('failure');
     expect(updates[0].data.summary).toEqual({
+      total: 0,
       imported: 0,
       updated: 0,
+      failed: 0,
       skipped: 0,
       errors: 1,
+      errorSummary: ['PROVIDER_REQUEST_FAILED'],
     });
     expect(updates[0].data.finishedAt).toBeInstanceOf(Date);
   });

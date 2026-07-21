@@ -61,7 +61,15 @@ describe('ImportOrchestrator', () => {
 
     const summary = await orchestrator.run();
 
-    expect(summary).toEqual({ imported: 1, updated: 0, skipped: 0, errors: 0 });
+    expect(summary).toEqual({
+      total: 1,
+      imported: 1,
+      updated: 0,
+      failed: 0,
+      skipped: 0,
+      errors: 0,
+      errorSummary: [],
+    });
   });
 
   it('updates an existing ProviderService and counts it as updated', async () => {
@@ -74,7 +82,15 @@ describe('ImportOrchestrator', () => {
 
     const summary = await orchestrator.run();
 
-    expect(summary).toEqual({ imported: 0, updated: 1, skipped: 0, errors: 0 });
+    expect(summary).toEqual({
+      total: 1,
+      imported: 0,
+      updated: 1,
+      failed: 0,
+      skipped: 0,
+      errors: 0,
+      errorSummary: [],
+    });
   });
 
   it('calls upsertByOriginAndExternalId with the correct providerOrigin, externalId, and rawPayload', async () => {
@@ -120,7 +136,15 @@ describe('ImportOrchestrator', () => {
 
     const summary = await orchestrator.run();
 
-    expect(summary).toEqual({ imported: 0, updated: 0, skipped: 0, errors: 0 });
+    expect(summary).toEqual({
+      total: 0,
+      imported: 0,
+      updated: 0,
+      failed: 0,
+      skipped: 0,
+      errors: 0,
+      errorSummary: [],
+    });
   });
 
   it('propagates provider-client failures without reporting success', async () => {
@@ -131,21 +155,76 @@ describe('ImportOrchestrator', () => {
     await expect(orchestrator.run()).rejects.toBe(error);
   });
 
-  it('propagates repository failures without continuing to later items', async () => {
+  it('continues processing remaining items when one item fails and counts the failed item', async () => {
     const { orchestrator, providerClient, providerServiceRepository } =
       buildDeps();
-    const error = new Error('upsert failed');
     providerClient.fetchServices.mockResolvedValue([
       buildPayload({ externalId: '1' }),
       buildPayload({ externalId: '2' }),
     ]);
     providerServiceRepository.upsertByOriginAndExternalId
-      .mockRejectedValueOnce(error)
+      .mockRejectedValueOnce(new Error('transient write failed'))
       .mockResolvedValueOnce({ id: 'provider-service-2' });
+    providerServiceRepository.findByOriginAndExternalId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
 
-    await expect(orchestrator.run()).rejects.toBe(error);
+    const summary = await orchestrator.run();
+
+    expect(summary).toEqual({
+      total: 2,
+      imported: 1,
+      updated: 0,
+      failed: 1,
+      skipped: 0,
+      errors: 1,
+      errorSummary: ['1:PROVIDER_SERVICE_UPSERT_FAILED'],
+    });
     expect(
       providerServiceRepository.upsertByOriginAndExternalId,
-    ).toHaveBeenCalledTimes(1);
+    ).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not count an item as imported when staging upsert fails after provider upsert', async () => {
+    const {
+      orchestrator,
+      providerClient,
+      providerServiceRepository,
+      stagedServiceRepository,
+    } = buildDeps();
+
+    providerClient.fetchServices.mockResolvedValue([
+      buildPayload({ externalId: '10' }),
+      buildPayload({ externalId: '11' }),
+    ]);
+    providerServiceRepository.findByOriginAndExternalId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    stagedServiceRepository.upsertPendingFromProvider
+      .mockRejectedValueOnce(new Error('staging write failed'))
+      .mockResolvedValueOnce({ id: 'staged-11', reviewStatus: 'pending' });
+
+    const summary = await orchestrator.run();
+
+    expect(summary).toEqual({
+      total: 2,
+      imported: 1,
+      updated: 0,
+      failed: 1,
+      skipped: 0,
+      errors: 1,
+      errorSummary: ['10:STAGED_SERVICE_UPSERT_FAILED'],
+    });
+  });
+
+  it('records deterministic invalid-payload errors without leaking runtime error text', async () => {
+    const { orchestrator, providerClient } = buildDeps();
+    providerClient.fetchServices.mockResolvedValue([
+      buildPayload({ externalId: '99', rawPayload: undefined }),
+    ]);
+
+    const summary = await orchestrator.run();
+
+    expect(summary.errorSummary).toEqual(['99:INVALID_RAW_PAYLOAD']);
   });
 });
