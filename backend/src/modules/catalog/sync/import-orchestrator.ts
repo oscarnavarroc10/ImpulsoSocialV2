@@ -10,11 +10,28 @@ import { StagedServiceRepository } from '../infrastructure/staged-service.reposi
 import { BULKFOLLOWS_PROVIDER_ORIGIN } from '../infrastructure/bulkfollows.client';
 
 export interface ImportOrchestratorSummary {
+  total: number;
   imported: number;
   updated: number;
+  failed: number;
   skipped: number;
   errors: number;
-  [key: string]: number;
+  errorSummary: string[];
+}
+
+type ItemFailureCode =
+  | 'INVALID_RAW_PAYLOAD'
+  | 'PROVIDER_SERVICE_LOOKUP_FAILED'
+  | 'PROVIDER_SERVICE_UPSERT_FAILED'
+  | 'STAGED_SERVICE_UPSERT_FAILED';
+
+class ItemImportError extends Error {
+  constructor(
+    readonly externalId: string,
+    readonly code: ItemFailureCode,
+  ) {
+    super(`Item import failed for externalId "${externalId}": ${code}`);
+  }
 }
 
 function isJsonValue(value: unknown): value is Prisma.InputJsonValue {
@@ -30,13 +47,13 @@ function isJsonValue(value: unknown): value is Prisma.InputJsonValue {
 }
 
 /**
- * Orchestrates the normal-path provider import flow for the single
- * configured provider (BulkFollows): fetch provider services, upsert each
- * `ProviderService` record, and create the corresponding pending
- * `StagedService` entry. Only the successful/straightforward flow is
- * implemented here; partial-failure aggregation belongs to T021. Any
- * provider-client or repository failure propagates unchanged so the caller
- * (`SyncService`) can record an accurate `SyncJob` failure.
+ * Orchestrates provider import flow for the single configured provider
+ * (BulkFollows): fetch provider services, upsert each `ProviderService`
+ * record, and create/update corresponding pending `StagedService` entries.
+ *
+ * Provider-level failures (fetchServices) propagate unchanged. Item-level
+ * failures are aggregated into deterministic summary fields, allowing the
+ * caller to persist partial/failure SyncJob outcomes without false success.
  */
 @Injectable()
 export class ImportOrchestrator {
@@ -57,14 +74,25 @@ export class ImportOrchestrator {
     const payloads = await this.providerClient.fetchServices();
 
     const summary: ImportOrchestratorSummary = {
+      total: payloads.length,
       imported: 0,
       updated: 0,
+      failed: 0,
       skipped: 0,
       errors: 0,
+      errorSummary: [],
     };
 
     for (const payload of payloads) {
-      await this.importOne(payload, summary);
+      try {
+        await this.importOne(payload, summary);
+      } catch (error) {
+        summary.failed += 1;
+        summary.errors += 1;
+        summary.errorSummary.push(
+          this.toDeterministicItemFailureSummary(payload, error),
+        );
+      }
     }
 
     return summary;
@@ -74,40 +102,64 @@ export class ImportOrchestrator {
     payload: ProviderServicePayload,
     summary: ImportOrchestratorSummary,
   ): Promise<void> {
+    const externalId = payload.externalId;
     const rawPayload: unknown = payload.rawPayload;
     if (!isJsonValue(rawPayload)) {
-      throw new Error(
-        `Provider payload for externalId "${payload.externalId}" is missing a raw payload`,
-      );
+      throw new ItemImportError(externalId, 'INVALID_RAW_PAYLOAD');
     }
 
-    const existing =
-      await this.providerServiceRepository.findByOriginAndExternalId(
+    let existing: { id: string } | null;
+    try {
+      existing = await this.providerServiceRepository.findByOriginAndExternalId(
         BULKFOLLOWS_PROVIDER_ORIGIN,
-        payload.externalId,
+        externalId,
       );
+    } catch {
+      throw new ItemImportError(externalId, 'PROVIDER_SERVICE_LOOKUP_FAILED');
+    }
 
-    const providerService =
-      await this.providerServiceRepository.upsertByOriginAndExternalId({
-        providerOrigin: BULKFOLLOWS_PROVIDER_ORIGIN,
-        externalId: payload.externalId,
-        rawPayload,
-      });
+    let providerService: { id: string };
+    try {
+      providerService =
+        await this.providerServiceRepository.upsertByOriginAndExternalId({
+          providerOrigin: BULKFOLLOWS_PROVIDER_ORIGIN,
+          externalId,
+          rawPayload,
+        });
+    } catch {
+      throw new ItemImportError(externalId, 'PROVIDER_SERVICE_UPSERT_FAILED');
+    }
+
+    try {
+      await this.stagedServiceRepository.upsertPendingFromProvider(
+        providerService.id,
+        {
+          title: payload.title,
+          description: payload.description,
+          categoryId: payload.categoryId,
+          socialNetwork: payload.socialNetwork,
+        },
+      );
+    } catch {
+      throw new ItemImportError(externalId, 'STAGED_SERVICE_UPSERT_FAILED');
+    }
 
     if (existing) {
       summary.updated += 1;
     } else {
       summary.imported += 1;
     }
+  }
 
-    await this.stagedServiceRepository.upsertPendingFromProvider(
-      providerService.id,
-      {
-        title: payload.title,
-        description: payload.description,
-        categoryId: payload.categoryId,
-        socialNetwork: payload.socialNetwork,
-      },
-    );
+  private toDeterministicItemFailureSummary(
+    payload: ProviderServicePayload,
+    error: unknown,
+  ): string {
+    const externalId = payload.externalId;
+    if (error instanceof ItemImportError) {
+      return `${externalId}:${error.code}`;
+    }
+
+    return `${externalId}:UNKNOWN_ITEM_FAILURE`;
   }
 }
