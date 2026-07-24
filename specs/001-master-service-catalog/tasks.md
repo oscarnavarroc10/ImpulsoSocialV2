@@ -65,10 +65,10 @@
 
 **Independent completion:** Tenant-level service overrides can be stored and managed, approved monetary rules are validated, immutable master catalog snapshots can be published, and exported JSON matches the approved public contract without leaking provider data.
 
-- [ ] T040 [US3] Implement the Prisma-backed `TenantServiceOverrideRepository` with the unique database constraint on `tenantId` and `masterServiceId` — `backend/src/modules/catalog/infrastructure/tenant-service-override.repository.ts`
-- [ ] T041 [US3] Implement `TenantServiceOverrideService` for creating, updating, reading, and removing tenant enable or disable and selling-price overrides — `backend/src/modules/catalog/application/tenant-service-override.service.ts`
-- [ ] T042 [US3] Implement protected administrative endpoints for managing tenant service overrides — `backend/src/modules/catalog/presentation/tenant-service-override.controller.ts`
-- [ ] T043 [US3] Implement monetary validation using integer minor units, non-negative values, approved ISO currency representation, and currency consistency when monetary values are compared; do not add markup, margin, tier, commission, or automatic pricing rules — `backend/src/modules/catalog/application/pricing.validation.ts`
+- [x] T040 [US3] Implement the Prisma-backed `TenantServiceOverrideRepository` with the unique database constraint on `tenantId` and `masterServiceId` — `backend/src/modules/catalog/infrastructure/tenant-service-override.repository.ts`
+- [x] T041 [US3] Implement `TenantServiceOverrideService` for creating, updating, reading, and removing tenant enable or disable and selling-price overrides — `backend/src/modules/catalog/application/tenant-service-override.service.ts`
+- [x] T042 [US3] Implement protected administrative endpoints for managing tenant service overrides — `backend/src/modules/catalog/presentation/tenant-service-override.controller.ts`
+- [x] T043 [US3] Implement monetary validation using integer minor units, non-negative values, approved ISO currency representation, and currency consistency when monetary values are compared; do not add markup, margin, tier, commission, or automatic pricing rules — `backend/src/modules/catalog/application/pricing.validation.ts`
 - [ ] T044 [US3] Implement `SnapshotService` to create draft snapshots from curated master services and categories only, publish them with `publishedAt`, and prevent modification after publication — `backend/src/modules/catalog/snapshot/snapshot.service.ts`
 - [ ] T045 [US3] Implement the protected administrative endpoint for creating and publishing master catalog snapshots — `backend/src/modules/catalog/presentation/snapshot.controller.ts`
 - [ ] T046 [US3] Implement the export service for published snapshots using only approved public fields; exclude `providerOrigin`, `externalId`, `rawPayload`, credentials, and internal provider metadata — `backend/src/modules/catalog/snapshot/export.service.ts`
