@@ -18,6 +18,9 @@ import { DeprecationController } from './presentation/deprecation.controller';
 import { CategoryRepository } from './infrastructure/category.repository';
 import { CategoryService } from './application/category.service';
 import { CategoryController } from './presentation/category.controller';
+import { MasterServiceVisibilityService } from './application/master-service-visibility.service';
+import { VisibilityResolutionService } from './application/visibility-resolution.service';
+import { MasterServiceVisibilityController } from './presentation/master-service-visibility.controller';
 
 // Minimal fail-closed adapter for missing external authorization integration.
 const FailClosedAuthProvider = {
@@ -37,6 +40,7 @@ const FailClosedAuthProvider = {
     SyncController,
     DeprecationController,
     CategoryController,
+    MasterServiceVisibilityController,
   ],
   providers: [
     PrismaService,
@@ -48,6 +52,8 @@ const FailClosedAuthProvider = {
     CurationService,
     DeprecationService,
     CategoryService,
+    MasterServiceVisibilityService,
+    VisibilityResolutionService,
     SyncService,
     ImportOrchestrator,
     CatalogAuthorizationGuard,
@@ -64,6 +70,8 @@ const FailClosedAuthProvider = {
     DeprecationService,
     CategoryRepository,
     CategoryService,
+    MasterServiceVisibilityService,
+    VisibilityResolutionService,
     SyncService,
     PROVIDER_CATALOG_CLIENT,
   ],
