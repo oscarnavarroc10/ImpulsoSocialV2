@@ -50,4 +50,19 @@ export class ProviderServiceRepository {
       },
     });
   }
+
+  async findByIds(ids: string[]) {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.prisma.providerService.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+        externalId: true,
+        importTimestamp: true,
+      },
+    });
+  }
 }

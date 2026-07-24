@@ -13,6 +13,8 @@ import { PROVIDER_CATALOG_CLIENT } from './infrastructure/provider-catalog-clien
 import { CurationService } from './application/curation.service';
 import { StagedServiceController } from './presentation/staged-service.controller';
 import { SyncController } from './presentation/sync.controller';
+import { DeprecationService } from './application/deprecation.service';
+import { DeprecationController } from './presentation/deprecation.controller';
 
 // Minimal fail-closed adapter for missing external authorization integration.
 const FailClosedAuthProvider = {
@@ -27,7 +29,7 @@ const FailClosedAuthProvider = {
 };
 
 @Module({
-  controllers: [StagedServiceController, SyncController],
+  controllers: [StagedServiceController, SyncController, DeprecationController],
   providers: [
     PrismaService,
     ProviderServiceRepository,
@@ -35,6 +37,7 @@ const FailClosedAuthProvider = {
     MasterServiceRepository,
     AuditService,
     CurationService,
+    DeprecationService,
     SyncService,
     ImportOrchestrator,
     CatalogAuthorizationGuard,
@@ -48,6 +51,7 @@ const FailClosedAuthProvider = {
     MasterServiceRepository,
     AuditService,
     CurationService,
+    DeprecationService,
     SyncService,
     PROVIDER_CATALOG_CLIENT,
   ],
