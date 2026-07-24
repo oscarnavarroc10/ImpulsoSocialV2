@@ -33,13 +33,13 @@
 
 - [X] T020 [US1] Implement provider import orchestration using `ProviderCatalogClient`: fetch provider services, map responses, upsert `ProviderService`, create or update staging records, and persist the final `SyncJob` summary — `backend/src/modules/catalog/sync/import-orchestrator.ts`
 - [x] T021 [US1] Implement partial-failure handling so provider request or mapping failures produce accurate `SyncJob` status, failure counts, and error summaries without falsely reporting success — `backend/src/modules/catalog/sync/import-orchestrator.ts`
-- [ ] T022 [US1] Implement the curation application service for staged-service listing, approval, rejection, curated field edits, internal identifier generation, and provenance assignment — `backend/src/modules/catalog/application/curation.service.ts`
+- [x] T022 [US1] Implement the curation application service for staged-service listing, approval, rejection, curated field edits, internal identifier generation, and provenance assignment — `backend/src/modules/catalog/application/curation.service.ts`
 - [ ] T023 [US1] Implement the provider-service deprecation review flow; services missing from the provider response must require administrative confirmation before the related master service becomes deprecated — `backend/src/modules/catalog/application/deprecation.service.ts`
 - [ ] T024 [US1] Implement the protected administrative endpoint for triggering an on-demand provider synchronization — `backend/src/modules/catalog/presentation/sync.controller.ts`
-- [ ] T025 [US1] Implement protected administrative endpoints for listing staged services and approving or rejecting them with curated edits — `backend/src/modules/catalog/presentation/staged-service.controller.ts`
+- [x] T025 [US1] Implement protected administrative endpoints for listing staged services and approving or rejecting them with curated edits — `backend/src/modules/catalog/presentation/staged-service.controller.ts`
 - [ ] T026 [US1] Implement protected administrative endpoints for reviewing and confirming provider-service deprecations — `backend/src/modules/catalog/presentation/deprecation.controller.ts`
 - [ ] T027 [US1] Add integration tests for synchronization idempotency, repeated imports without duplicates, and provider updates not overwriting curated business fields — `backend/test/integration/catalog/sync-idempotency.spec.ts`
-- [ ] T028 [US1] Add unit tests for staged-service approval, rejection, validation, curated field mapping, and audit creation — `backend/test/unit/catalog/curation.service.spec.ts`
+- [x] T028 [US1] Add unit tests for staged-service approval, rejection, validation, curated field mapping, and audit creation — `backend/test/unit/catalog/curation.service.spec.ts`
 - [ ] T029 [US1] Add unit tests for the provider-service deprecation review and confirmation flow — `backend/test/unit/catalog/deprecation.service.spec.ts`
 - [ ] T030 [US1] Add integration tests for scheduled and on-demand synchronization, including successful, failed, and partially failed `SyncJob` records — `backend/test/integration/catalog/sync-job.spec.ts`
 

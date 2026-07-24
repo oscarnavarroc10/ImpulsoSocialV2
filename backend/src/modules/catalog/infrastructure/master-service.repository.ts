@@ -15,6 +15,41 @@ export class MasterServiceRepository {
     return this.prisma.masterService.findFirst({ where: { provenanceRef } });
   }
 
+  async createCurated(data: {
+    title: string;
+    description: string;
+    categoryId: string;
+    socialNetwork: string;
+    providerCostAmount: number;
+    providerCostCurrency: string;
+    defaultSellingPriceAmount: number;
+    defaultSellingPriceCurrency: string;
+    isVisible: boolean;
+    status: 'active';
+    provenanceRef: string;
+  }) {
+    return this.prisma.masterService.create({ data });
+  }
+
+  async applyApproval(id: string, data: {
+    title: string;
+    description: string;
+    categoryId: string;
+    socialNetwork: string;
+    providerCostAmount: number;
+    providerCostCurrency: string;
+    defaultSellingPriceAmount: number;
+    defaultSellingPriceCurrency: string;
+    isVisible: boolean;
+    status: 'active';
+    provenanceRef: string;
+  }) {
+    return this.prisma.masterService.update({
+      where: { id },
+      data,
+    });
+  }
+
   async updateCuratedFields(
     id: string,
     data: {

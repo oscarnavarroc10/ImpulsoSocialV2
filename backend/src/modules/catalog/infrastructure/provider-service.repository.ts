@@ -6,6 +6,10 @@ import { PrismaService } from '../../../prisma/prisma.service';
 export class ProviderServiceRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findById(id: string) {
+    return this.prisma.providerService.findUnique({ where: { id } });
+  }
+
   async findByOriginAndExternalId(providerOrigin: string, externalId: string) {
     return this.prisma.providerService.findUnique({
       where: {

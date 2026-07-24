@@ -10,6 +10,8 @@ import { CatalogAuthorizationGuard } from './security/catalog-authorization.guar
 import { CATALOG_AUTHORIZATION } from './security/catalog-authorization.interface';
 import { BulkFollowsClient } from './infrastructure/bulkfollows.client';
 import { PROVIDER_CATALOG_CLIENT } from './infrastructure/provider-catalog-client';
+import { CurationService } from './application/curation.service';
+import { StagedServiceController } from './presentation/staged-service.controller';
 
 // Minimal fail-closed adapter for missing external authorization integration.
 const FailClosedAuthProvider = {
@@ -24,12 +26,14 @@ const FailClosedAuthProvider = {
 };
 
 @Module({
+  controllers: [StagedServiceController],
   providers: [
     PrismaService,
     ProviderServiceRepository,
     StagedServiceRepository,
     MasterServiceRepository,
     AuditService,
+    CurationService,
     SyncService,
     ImportOrchestrator,
     CatalogAuthorizationGuard,
@@ -42,6 +46,7 @@ const FailClosedAuthProvider = {
     StagedServiceRepository,
     MasterServiceRepository,
     AuditService,
+    CurationService,
     SyncService,
     PROVIDER_CATALOG_CLIENT,
   ],
