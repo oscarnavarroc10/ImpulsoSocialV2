@@ -8,6 +8,14 @@
 
 **Input**: User description: "Build the master service catalog for the SMM platform. As a platform administrator, I want to synchronize services from the BulkFollows provider, curate them into an internal master catalog, and manage categories, social networks, visibility, and pricing rules independently from the provider. The system must never expose the provider catalog directly. The master catalog will become the source used by future tenant catalogs in the White Label architecture."
 
+## Clarifications
+
+### Session 2026-07-24
+
+- Q: When approving a staged service, should the system always create a new `MasterService`, or update an existing one matched by provider provenance? → A: Approval creates a new `MasterService` only if no linked record exists; otherwise it updates the existing `MasterService` matched by provider provenance and refreshes `provenanceRef` to the latest `ProviderService`.
+- Q: Which fields must the administrator provide during approval, and which are system-assigned or copied? → A: The administrator provides `title`, `description`, `category`, `socialNetwork`, `defaultSellingPrice` (amount and currency), and `isVisible`. The system copies `providerCost` (amount and currency) from the latest approved provider record and sets the initial `status` to `active`.
+- Q: How is `providerCost` established during approval? → A: `providerCost` is copied from the latest approved provider record after import normalization. The amount uses the provider's current normalized price in minor units, and the currency uses the single platform base currency configured for the backend.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Import & Curate Provider Services (Priority: P1)
@@ -21,7 +29,7 @@ As a platform administrator, I can import and synchronize services from the Bulk
 **Acceptance Scenarios**:
 
 1. **Given** BulkFollows credentials and a scheduled sync job, **When** sync runs, **Then** provider services are imported into a staging area with provenance metadata (provider id, import timestamp).
-2. **Given** services in staging, **When** an admin approves a service, **Then** an entry is created/updated in the master catalog with independent internal identifiers and curated fields.
+2. **Given** services in staging, **When** an admin approves a service, **Then** the system creates a new `MasterService` only if no linked record exists for that provider provenance; otherwise it updates the existing linked `MasterService`, preserves its internal identifier, refreshes `provenanceRef` to the latest `ProviderService`, stores administrator-provided `title`, `description`, `category`, `socialNetwork`, `defaultSellingPrice`, and `isVisible`, copies `providerCost` from the latest approved provider record using the provider's normalized price in minor units and the platform base currency, and sets initial `status` to `active`.
 3. **Given** a service rejected in curation, **When** a tenant catalog is generated, **Then** the rejected service is not included.
 4. **Given** an import, curation, or publish action, **When** an audit is requested, **Then** the audit trail contains an entry with actor, timestamp, action type, and field-level deltas or notes.
 5. **Given** a published master snapshot, **When** an export is requested, **Then** a versioned snapshot is produced that contains master service entries and excludes raw provider payloads and provider identifiers.
@@ -72,6 +80,11 @@ As a platform administrator, I can author pricing rules (flat, tiered, markup/di
 - **FR-002**: System MUST import provider services into a staging area and store provenance metadata (provider id, raw provider payload, import timestamp).
  - **FR-003**: System MUST provide administrative interfaces to review, edit, approve, or reject staged provider services.
  - **FR-004**: System MUST create internal `MasterService` entries with independent identifiers and curated fields; provider identifiers MUST NOT be exposed in tenant-facing catalogs or exports.
+- **FR-004a**: Approval of a staged service MUST create a new `MasterService` only when no linked `MasterService` exists for the provider provenance represented by the staged record.
+- **FR-004b**: If a linked `MasterService` already exists for that provider provenance, approval MUST update that existing `MasterService`, preserve its internal identifier, and refresh `provenanceRef` to the latest approved `ProviderService` record.
+- **FR-004c**: During approval, the administrator MUST provide `title`, `description`, `category`, `socialNetwork`, `defaultSellingPrice` (amount and currency), and `isVisible` for the curated `MasterService`.
+- **FR-004d**: During approval, the system MUST copy `providerCost` from the latest approved provider record and MUST set the initial `MasterService.status` to `active`.
+- **FR-004e**: The copied `providerCost.amount` MUST use the provider's current normalized price in integer minor units, and `providerCost.currency` MUST use the single platform base currency configured for the backend.
 - **FR-005**: System MUST support creation and management of categories and social-network mappings, and associate master services with those categories/networks.
 - **FR-006**: System MUST store both `Provider Cost` (the provider's cost) and `Default Selling Price` for each MasterService. Tenant catalogs MUST inherit the `Default Selling Price` and may optionally override it with a `Tenant Selling Price`. Tiered pricing is out of scope for v1.
 - **FR-007**: System MUST support visibility rules (global, market, tenant-scoped) and apply them when generating tenant catalogs. Visibility follows a simple inheritance model: Master Catalog → Tenant Catalog. A service visible in the Master Catalog is inherited by tenants unless explicitly disabled for that tenant.
@@ -110,6 +123,7 @@ As a platform administrator, I can author pricing rules (flat, tiered, markup/di
 - Initial provider catalog size is moderate (thousands of services), not millions; performance targets may be revisited later.
 - Tenant catalogs are generated from versioned snapshots of the master catalog and not from live staged provider payloads.
 - Platform already has an admin role and authentication system that can be reused for access control.
+- The backend has a single platform base currency configuration used to normalize provider cost values for v1.
 - Data retention, GDPR, and other compliance rules will be applied at the platform level and are out of scope for this spec except where noted.
 
 ## Questions / Clarifications (answered)

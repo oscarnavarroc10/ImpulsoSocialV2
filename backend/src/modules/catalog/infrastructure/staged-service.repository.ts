@@ -5,6 +5,10 @@ import { PrismaService } from '../../../prisma/prisma.service';
 export class StagedServiceRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async findById(id: string) {
+    return this.prisma.stagedService.findUnique({ where: { id } });
+  }
+
   async upsertPendingFromProvider(
     providerServiceId: string,
     payload: {
@@ -48,6 +52,7 @@ export class StagedServiceRepository {
   async findPending(limit = 100) {
     return this.prisma.stagedService.findMany({
       where: { reviewStatus: 'pending' },
+      orderBy: { ingestedAt: 'desc' },
       take: limit,
     });
   }
