@@ -12,6 +12,7 @@ import { BulkFollowsClient } from './infrastructure/bulkfollows.client';
 import { PROVIDER_CATALOG_CLIENT } from './infrastructure/provider-catalog-client';
 import { CurationService } from './application/curation.service';
 import { StagedServiceController } from './presentation/staged-service.controller';
+import { SyncController } from './presentation/sync.controller';
 
 // Minimal fail-closed adapter for missing external authorization integration.
 const FailClosedAuthProvider = {
@@ -26,7 +27,7 @@ const FailClosedAuthProvider = {
 };
 
 @Module({
-  controllers: [StagedServiceController],
+  controllers: [StagedServiceController, SyncController],
   providers: [
     PrismaService,
     ProviderServiceRepository,
