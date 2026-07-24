@@ -53,11 +53,11 @@
 - [x] T032 [US2] Implement the Prisma-backed `CategoryRepository` — `backend/src/modules/catalog/infrastructure/category.repository.ts`
 - [x] T033 [US2] Implement `CategoryService` for category creation, updates, listing, and allowed deletion or deactivation behavior — `backend/src/modules/catalog/application/category.service.ts`
 - [x] T034 [US2] Implement protected administrative category CRUD endpoints — `backend/src/modules/catalog/presentation/category.controller.ts`
-- [ ] T035 [US2] Implement master-service visibility management using `MasterService.isVisible` — `backend/src/modules/catalog/application/master-service-visibility.service.ts`
-- [ ] T036 [US2] Implement visibility resolution that combines master-level visibility with an optional tenant enable or disable override for future tenant-catalog consumers — `backend/src/modules/catalog/application/visibility-resolution.service.ts`
-- [ ] T037 [US2] Implement protected administrative endpoints for updating master-service visibility — `backend/src/modules/catalog/presentation/master-service-visibility.controller.ts`
+- [x] T035 [US2] Implement master-service visibility management using `MasterService.isVisible` — `backend/src/modules/catalog/application/master-service-visibility.service.ts`
+- [x] T036 [US2] Implement visibility resolution that combines master-level visibility with an optional tenant enable or disable override for future tenant-catalog consumers — `backend/src/modules/catalog/application/visibility-resolution.service.ts`
+- [x] T037 [US2] Implement protected administrative endpoints for updating master-service visibility — `backend/src/modules/catalog/presentation/master-service-visibility.controller.ts`
 - [x] T038 [US2] Add unit tests for category business logic and CRUD behavior — `backend/test/unit/catalog/category.service.spec.ts`
-- [ ] T039 [US2] Add unit tests for master visibility and tenant override resolution behavior — `backend/test/unit/catalog/visibility-resolution.service.spec.ts`
+- [x] T039 [US2] Add unit tests for master visibility and tenant override resolution behavior — `backend/test/unit/catalog/visibility-resolution.service.spec.ts`
 
 ## Phase 5: User Story 3 — Pricing, Tenant Overrides, Snapshots, and Export
 
