@@ -42,9 +42,7 @@ export class StagedCurationDto {
         );
       }
       dto.curatedSocialNetwork = b.curatedSocialNetwork as
-        | 'Instagram'
-        | 'Facebook'
-        | 'TikTok';
+        'Instagram' | 'Facebook' | 'TikTok';
     }
 
     if (b.defaultSellingPriceAmount != null) {

@@ -13,7 +13,10 @@ export interface TenantServiceOverrideWriteModel {
 export class TenantServiceOverrideRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findByTenantAndMasterService(tenantId: string, masterServiceId: string) {
+  async findByTenantAndMasterService(
+    tenantId: string,
+    masterServiceId: string,
+  ) {
     return this.prisma.tenantServiceOverride.findUnique({
       where: {
         tenantId_masterServiceId: {

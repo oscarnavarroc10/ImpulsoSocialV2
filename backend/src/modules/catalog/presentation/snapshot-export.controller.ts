@@ -1,4 +1,10 @@
-import { BadRequestException, Controller, Get, Param, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Param,
+  UseGuards,
+} from '@nestjs/common';
 import { CatalogAuthorizationGuard } from '../security/catalog-authorization.guard';
 import { ExportService } from '../snapshot/export.service';
 

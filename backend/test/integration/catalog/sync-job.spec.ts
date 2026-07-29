@@ -43,7 +43,8 @@ function createSyncJobHarness() {
           const updated: SyncJobRecord = {
             ...existing,
             ...data,
-            summary: (data.summary as Record<string, unknown>) ?? existing.summary,
+            summary:
+              (data.summary as Record<string, unknown>) ?? existing.summary,
             finishedAt: (data.finishedAt as Date | null) ?? existing.finishedAt,
           };
 

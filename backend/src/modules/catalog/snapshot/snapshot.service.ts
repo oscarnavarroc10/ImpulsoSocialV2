@@ -41,14 +41,18 @@ export class SnapshotService {
       orderBy: { title: 'asc' },
     });
 
-    const categoryIds = [...new Set(masterServices.map((service) => service.categoryId))];
+    const categoryIds = [
+      ...new Set(masterServices.map((service) => service.categoryId)),
+    ];
     const categories = await this.prisma.category.findMany({
       where: {
         id: { in: categoryIds },
       },
     });
 
-    const categoryById = new Map(categories.map((category) => [category.id, category]));
+    const categoryById = new Map(
+      categories.map((category) => [category.id, category]),
+    );
     const items = masterServices.map((service) => {
       const category = categoryById.get(service.categoryId);
       if (!category) {
@@ -101,7 +105,9 @@ export class SnapshotService {
     }
 
     if (snapshot.items.length === 0) {
-      throw new BadRequestException('Draft snapshot must contain at least one item');
+      throw new BadRequestException(
+        'Draft snapshot must contain at least one item',
+      );
     }
 
     return this.prisma.masterCatalogSnapshot.update({

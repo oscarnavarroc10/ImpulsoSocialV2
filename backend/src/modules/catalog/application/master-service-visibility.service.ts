@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { MasterServiceRepository } from '../infrastructure/master-service.repository';
 
 @Injectable()
@@ -8,7 +12,8 @@ export class MasterServiceVisibilityService {
   ) {}
 
   async getVisibility(masterServiceId: string) {
-    const service = await this.masterServiceRepository.findById(masterServiceId);
+    const service =
+      await this.masterServiceRepository.findById(masterServiceId);
     if (!service) {
       throw new NotFoundException('Master service not found');
     }
@@ -25,7 +30,8 @@ export class MasterServiceVisibilityService {
       throw new BadRequestException('isVisible must be a boolean');
     }
 
-    const service = await this.masterServiceRepository.findById(masterServiceId);
+    const service =
+      await this.masterServiceRepository.findById(masterServiceId);
     if (!service) {
       throw new NotFoundException('Master service not found');
     }

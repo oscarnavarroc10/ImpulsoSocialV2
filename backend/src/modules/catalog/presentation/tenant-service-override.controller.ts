@@ -62,7 +62,9 @@ function parseUpdatePayload(body: unknown): UpdateTenantServiceOverrideInput {
     data.sellingPriceCurrency !== null &&
     typeof data.sellingPriceCurrency !== 'string'
   ) {
-    throw new BadRequestException('sellingPriceCurrency must be string or null');
+    throw new BadRequestException(
+      'sellingPriceCurrency must be string or null',
+    );
   }
 
   return {

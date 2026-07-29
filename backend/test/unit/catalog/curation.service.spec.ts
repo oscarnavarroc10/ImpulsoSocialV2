@@ -94,7 +94,9 @@ describe('CurationService', () => {
       id: 'provider-2',
       rawPayload: { rate: '2.00' },
     });
-    masterServiceRepository.findByProvenance.mockResolvedValue({ id: 'master-2' });
+    masterServiceRepository.findByProvenance.mockResolvedValue({
+      id: 'master-2',
+    });
     masterServiceRepository.applyApproval.mockResolvedValue({ id: 'master-2' });
 
     const dto = StagedCurationDto.validate({
