@@ -1,6 +1,8 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
+  ApiConflictResponse,
   ApiCreatedResponse,
+  ApiInternalServerErrorResponse,
   ApiNotImplementedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -8,7 +10,12 @@ import {
 } from '@nestjs/swagger';
 
 import { AuthService } from '../application/auth.service';
-import { LoginDto, RefreshTokenDto, RegisterDto } from '../application/dto';
+import {
+  AuthResponseDto,
+  LoginDto,
+  RefreshTokenDto,
+  RegisterDto,
+} from '../application/dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -21,11 +28,17 @@ export class AuthController {
   })
   @ApiCreatedResponse({
     description: 'Usuario registrado correctamente',
+    type: AuthResponseDto,
   })
-  @ApiNotImplementedResponse({
-    description: 'Flujo pendiente de implementación',
+  @ApiConflictResponse({
+    description:
+      'El correo electrónico ya está registrado o la tienda está inactiva',
   })
-  register(@Body() dto: RegisterDto): never {
+  @ApiInternalServerErrorResponse({
+    description:
+      'La tienda configurada para el registro no existe en la base de datos',
+  })
+  register(@Body() dto: RegisterDto): Promise<AuthResponseDto> {
     return this.authService.register(dto);
   }
 

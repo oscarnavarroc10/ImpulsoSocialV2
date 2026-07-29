@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 
-import { JwtPayload } from '../security/jwt-payload.interface';
+import {
+  JwtPayload,
+  VerifiedJwtPayload,
+} from '../security/jwt-payload.interface';
 import { TokenPair } from './token-pair.interface';
 
 export type BaseJwtPayload = Omit<JwtPayload, 'tipo'>;
@@ -60,12 +63,15 @@ export class AuthTokenService {
     );
   }
 
-  async verifyAccessToken(token: string): Promise<JwtPayload> {
+  async verifyAccessToken(token: string): Promise<VerifiedJwtPayload> {
     const secret = this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
 
-    const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-      secret,
-    });
+    const payload = await this.jwtService.verifyAsync<VerifiedJwtPayload>(
+      token,
+      {
+        secret,
+      },
+    );
 
     if (payload.tipo !== 'access') {
       throw new Error('El token proporcionado no es un access token');
@@ -74,12 +80,15 @@ export class AuthTokenService {
     return payload;
   }
 
-  async verifyRefreshToken(token: string): Promise<JwtPayload> {
+  async verifyRefreshToken(token: string): Promise<VerifiedJwtPayload> {
     const secret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
 
-    const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-      secret,
-    });
+    const payload = await this.jwtService.verifyAsync<VerifiedJwtPayload>(
+      token,
+      {
+        secret,
+      },
+    );
 
     if (payload.tipo !== 'refresh') {
       throw new Error('El token proporcionado no es un refresh token');
