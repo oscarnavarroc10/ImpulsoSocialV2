@@ -24,6 +24,10 @@ import { MasterServiceVisibilityController } from './presentation/master-service
 import { TenantServiceOverrideRepository } from './infrastructure/tenant-service-override.repository';
 import { TenantServiceOverrideService } from './application/tenant-service-override.service';
 import { TenantServiceOverrideController } from './presentation/tenant-service-override.controller';
+import { SnapshotService } from './snapshot/snapshot.service';
+import { SnapshotController } from './presentation/snapshot.controller';
+import { ExportService } from './snapshot/export.service';
+import { SnapshotExportController } from './presentation/snapshot-export.controller';
 
 // Minimal fail-closed adapter for missing external authorization integration.
 const FailClosedAuthProvider = {
@@ -45,6 +49,8 @@ const FailClosedAuthProvider = {
     CategoryController,
     MasterServiceVisibilityController,
     TenantServiceOverrideController,
+    SnapshotController,
+    SnapshotExportController,
   ],
   providers: [
     PrismaService,
@@ -60,6 +66,8 @@ const FailClosedAuthProvider = {
     MasterServiceVisibilityService,
     VisibilityResolutionService,
     TenantServiceOverrideService,
+    SnapshotService,
+    ExportService,
     SyncService,
     ImportOrchestrator,
     CatalogAuthorizationGuard,
@@ -80,6 +88,8 @@ const FailClosedAuthProvider = {
     VisibilityResolutionService,
     TenantServiceOverrideRepository,
     TenantServiceOverrideService,
+    SnapshotService,
+    ExportService,
     SyncService,
     PROVIDER_CATALOG_CLIENT,
   ],
