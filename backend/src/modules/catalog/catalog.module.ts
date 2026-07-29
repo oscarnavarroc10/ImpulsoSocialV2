@@ -28,9 +28,10 @@ import { SnapshotService } from './snapshot/snapshot.service';
 import { SnapshotController } from './presentation/snapshot.controller';
 import { ExportService } from './snapshot/export.service';
 import { SnapshotExportController } from './presentation/snapshot-export.controller';
+import { DevelopmentCatalogAuthorization } from './security/development-catalog-authorization';
 
 // Minimal fail-closed adapter for missing external authorization integration.
-const FailClosedAuthProvider = {
+/*const FailClosedAuthProvider = {
   provide: CATALOG_AUTHORIZATION,
   useValue: {
     getPrincipal: () => Promise.resolve(null),
@@ -40,7 +41,7 @@ const FailClosedAuthProvider = {
     },
   },
 };
-
+*/
 @Module({
   controllers: [
     StagedServiceController,
@@ -71,7 +72,10 @@ const FailClosedAuthProvider = {
     SyncService,
     ImportOrchestrator,
     CatalogAuthorizationGuard,
-    FailClosedAuthProvider,
+    {
+      provide: CATALOG_AUTHORIZATION,
+      useClass: DevelopmentCatalogAuthorization,
+    },
     BulkFollowsClient,
     { provide: PROVIDER_CATALOG_CLIENT, useExisting: BulkFollowsClient },
   ],
