@@ -25,6 +25,9 @@ model MasterService {
   isVisible                   Boolean
   status                      MasterServiceStatus
   provenanceRef               String?
+
+  configuracionesTienda TenantServiceOverride[]
+  ordenes               Orden[]
 }
 
 model ProviderService {
@@ -69,6 +72,9 @@ model TenantServiceOverride {
   sellingPriceAmount   Int?
   sellingPriceCurrency String?
 
+  tienda   Tienda        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  servicio MasterService @relation(fields: [masterServiceId], references: [id], onDelete: Cascade)
+
   @@unique([tenantId, masterServiceId])
 }
 
@@ -93,7 +99,7 @@ model MasterCatalogSnapshotItem {
   sellingPriceAmount Int
   currency           String
   serviceStatus      String
-  snapshot MasterCatalogSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  snapshot           MasterCatalogSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
 
   @@index([snapshotId])
 }
@@ -114,4 +120,299 @@ model AuditLog {
   action    String
   timestamp DateTime @default(now())
   details   Json?
+}
+
+enum RolUsuario {
+  cliente
+  administradorTienda
+  administradorPlataforma
+}
+
+enum EstadoUsuario {
+  activo
+  bloqueado
+  eliminado
+}
+
+enum TipoMovimientoSaldo {
+  deposito
+  compra
+  reembolso
+  ajusteCredito
+  ajusteDebito
+}
+
+enum EstadoDeposito {
+  pendiente
+  aprobado
+  rechazado
+  cancelado
+}
+
+enum MetodoDeposito {
+  transferencia
+  tarjeta
+  criptomoneda
+  saldoManual
+  otro
+}
+
+enum EstadoOrden {
+  pendiente
+  enviando
+  enviadaProveedor
+  enProgreso
+  parcial
+  completada
+  cancelada
+  fallida
+  reembolsada
+}
+
+enum EstadoSolicitudProveedor {
+  pendiente
+  enviada
+  completada
+  rechazada
+  fallida
+}
+
+model Tienda {
+  id            String   @id @default(cuid())
+  nombre        String
+  slug          String   @unique
+  moneda        String   @default("MXN")
+  activa        Boolean  @default(true)
+  creadaEn      DateTime @default(now())
+  actualizadaEn DateTime @updatedAt
+
+  usuarios                Usuario[]
+  billeteras              Billetera[]
+  depositos               Deposito[]
+  ordenes                 Orden[]
+  configuracionesServicio TenantServiceOverride[]
+
+  @@map("tiendas")
+}
+
+model Usuario {
+  id             String        @id @default(cuid())
+  tiendaId       String
+  nombre         String
+  email          String
+  passwordHash   String
+  rol            RolUsuario    @default(cliente)
+  estado         EstadoUsuario @default(activo)
+  ultimoAccesoEn DateTime?
+  creadoEn       DateTime      @default(now())
+  actualizadoEn  DateTime      @updatedAt
+
+  tienda     Tienda          @relation(fields: [tiendaId], references: [id], onDelete: Restrict)
+  sesiones   SesionUsuario[]
+  billeteras Billetera[]
+  ordenes    Orden[]
+
+  @@unique([tiendaId, email])
+  @@index([tiendaId, estado])
+  @@map("usuarios")
+}
+
+model SesionUsuario {
+  id               String    @id @default(cuid())
+  usuarioId        String
+  refreshTokenHash String    @unique
+  expiraEn         DateTime
+  revocadaEn       DateTime?
+  direccionIp      String?
+  dispositivo      String?
+  creadaEn         DateTime  @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, expiraEn])
+  @@map("sesiones_usuario")
+}
+
+model Billetera {
+  id              String   @id @default(cuid())
+  tiendaId        String
+  usuarioId       String
+  moneda          String   @default("MXN")
+  saldoDisponible Int      @default(0)
+  creadaEn        DateTime @default(now())
+  actualizadaEn   DateTime @updatedAt
+
+  tienda      Tienda            @relation(fields: [tiendaId], references: [id], onDelete: Restrict)
+  usuario     Usuario           @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  movimientos MovimientoSaldo[]
+  depositos   Deposito[]
+
+  @@unique([usuarioId, moneda])
+  @@index([tiendaId])
+  @@map("billeteras")
+}
+
+model MovimientoSaldo {
+  id             String              @id @default(cuid())
+  billeteraId    String
+  tipo           TipoMovimientoSaldo
+  monto          Int
+  saldoAnterior  Int
+  saldoPosterior Int
+  referencia     String?
+  descripcion    String?
+  creadoPorId    String?
+  creadoEn       DateTime            @default(now())
+
+  billetera Billetera @relation(fields: [billeteraId], references: [id], onDelete: Restrict)
+
+  @@index([billeteraId, creadoEn])
+  @@index([referencia])
+  @@map("movimientos_saldo")
+}
+
+model Deposito {
+  id                String         @id @default(cuid())
+  tiendaId          String
+  billeteraId       String
+  monto             Int
+  moneda            String
+  metodo            MetodoDeposito
+  estado            EstadoDeposito @default(pendiente)
+  proveedorPago     String?
+  referenciaExterna String?
+  comprobanteUrl    String?
+  datosProveedor    Json?
+  aprobadoPorId     String?
+  aprobadoEn        DateTime?
+  rechazadoEn       DateTime?
+  motivoRechazo     String?
+  creadoEn          DateTime       @default(now())
+  actualizadoEn     DateTime       @updatedAt
+
+  tienda    Tienda    @relation(fields: [tiendaId], references: [id], onDelete: Restrict)
+  billetera Billetera @relation(fields: [billeteraId], references: [id], onDelete: Restrict)
+
+  @@index([tiendaId, estado])
+  @@index([billeteraId, creadoEn])
+  @@index([proveedorPago, referenciaExterna])
+  @@map("depositos")
+}
+
+model Orden {
+  id                 String      @id @default(cuid())
+  tiendaId           String
+  usuarioId          String
+  servicioId         String
+  enlace             String
+  cantidad           Int
+  precioTotal        Int
+  monedaVenta        String
+  costoProveedor     Int?
+  monedaProveedor    String?
+  estado             EstadoOrden @default(pendiente)
+  conteoInicial      Int?
+  restante           Int?
+  mensajeError       String?
+  enviadaProveedorEn DateTime?
+  completadaEn       DateTime?
+  canceladaEn        DateTime?
+  creadaEn           DateTime    @default(now())
+  actualizadaEn      DateTime    @updatedAt
+
+  tienda   Tienda        @relation(fields: [tiendaId], references: [id], onDelete: Restrict)
+  usuario  Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  servicio MasterService @relation(fields: [servicioId], references: [id], onDelete: Restrict)
+
+  ordenProveedor         OrdenProveedor?
+  historial              HistorialOrden[]
+  solicitudesReposicion  SolicitudReposicion[]
+  solicitudesCancelacion SolicitudCancelacion[]
+
+  @@index([tiendaId, estado])
+  @@index([usuarioId, creadaEn])
+  @@index([servicioId])
+  @@map("ordenes")
+}
+
+model OrdenProveedor {
+  id                String    @id @default(cuid())
+  ordenId           String    @unique
+  proveedor         String
+  idExterno         String?
+  estadoExterno     String?
+  cargoProveedor    Int?
+  moneda            String?
+  solicitudOriginal Json?
+  respuestaOriginal Json?
+  ultimaConsultaEn  DateTime?
+  creadaEn          DateTime  @default(now())
+  actualizadaEn     DateTime  @updatedAt
+
+  orden Orden @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+
+  @@unique([proveedor, idExterno])
+  @@index([proveedor, estadoExterno])
+  @@map("ordenes_proveedor")
+}
+
+model HistorialOrden {
+  id             String       @id @default(cuid())
+  ordenId        String
+  estadoAnterior EstadoOrden?
+  estadoNuevo    EstadoOrden
+  origen         String
+  comentario     String?
+  datosProveedor Json?
+  creadoEn       DateTime     @default(now())
+
+  orden Orden @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+
+  @@index([ordenId, creadoEn])
+  @@map("historial_ordenes")
+}
+
+model SolicitudReposicion {
+  id                 String                   @id @default(cuid())
+  ordenId            String
+  estado             EstadoSolicitudProveedor @default(pendiente)
+  idExterno          String?
+  respuestaProveedor Json?
+  mensajeError       String?
+  solicitadaEn       DateTime                 @default(now())
+  actualizadaEn      DateTime                 @updatedAt
+  completadaEn       DateTime?
+
+  orden Orden @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+
+  @@index([ordenId, estado])
+  @@map("solicitudes_reposicion")
+}
+
+model SolicitudCancelacion {
+  id                 String                   @id @default(cuid())
+  ordenId            String
+  estado             EstadoSolicitudProveedor @default(pendiente)
+  respuestaProveedor Json?
+  mensajeError       String?
+  solicitadaEn       DateTime                 @default(now())
+  actualizadaEn      DateTime                 @updatedAt
+  completadaEn       DateTime?
+
+  orden Orden @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+
+  @@index([ordenId, estado])
+  @@map("solicitudes_cancelacion")
+}
+
+model SaldoProveedor {
+  id                String   @id @default(cuid())
+  proveedor         String
+  saldo             Int
+  moneda            String
+  respuestaOriginal Json?
+  consultadoEn      DateTime @default(now())
+
+  @@index([proveedor, consultadoEn])
+  @@map("saldos_proveedor")
 }
