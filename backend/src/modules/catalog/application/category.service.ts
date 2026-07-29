@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   CategoryCreateInput,
   CategoryEntity,
@@ -12,7 +16,9 @@ export class CategoryService {
 
   async list() {
     const rows = await this.categoryRepository.findAll();
-    return rows.map((row) => CategoryEntity.fromPersistence(row).toPrimitives());
+    return rows.map((row) =>
+      CategoryEntity.fromPersistence(row).toPrimitives(),
+    );
   }
 
   async getById(id: string) {

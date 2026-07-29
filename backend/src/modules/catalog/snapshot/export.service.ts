@@ -32,7 +32,9 @@ export class ExportService {
 
   constructor(private readonly snapshotService: SnapshotService) {}
 
-  async exportPublishedSnapshot(snapshotId: string): Promise<ExportedSnapshotDocument> {
+  async exportPublishedSnapshot(
+    snapshotId: string,
+  ): Promise<ExportedSnapshotDocument> {
     this.ensureNonEmpty(snapshotId, 'snapshotId');
 
     const snapshot = await this.snapshotService.getById(snapshotId);

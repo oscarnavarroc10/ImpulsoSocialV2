@@ -105,7 +105,10 @@ export class CurationService {
         )
       : await this.masterServiceRepository.createCurated(approvalData);
 
-    await this.stagedServiceRepository.updateReviewStatus(stagedService.id, 'approved');
+    await this.stagedServiceRepository.updateReviewStatus(
+      stagedService.id,
+      'approved',
+    );
     await this.auditService.recordCuration(actorId, {
       action: 'approve',
       stagedServiceId: stagedService.id,
@@ -134,9 +137,8 @@ export class CurationService {
   }
 
   private async reject(actorId: string, stagedServiceId: string) {
-    const stagedService = await this.stagedServiceRepository.findById(
-      stagedServiceId,
-    );
+    const stagedService =
+      await this.stagedServiceRepository.findById(stagedServiceId);
     if (!stagedService) {
       throw new NotFoundException('Staged service not found');
     }
@@ -146,7 +148,10 @@ export class CurationService {
       );
     }
 
-    await this.stagedServiceRepository.updateReviewStatus(stagedService.id, 'rejected');
+    await this.stagedServiceRepository.updateReviewStatus(
+      stagedService.id,
+      'rejected',
+    );
     await this.auditService.recordCuration(actorId, {
       action: 'reject',
       stagedServiceId: stagedService.id,

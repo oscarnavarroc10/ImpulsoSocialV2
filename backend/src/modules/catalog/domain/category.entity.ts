@@ -45,7 +45,9 @@ export class CategoryEntity {
     };
   }
 
-  update(input: CategoryUpdateInput): Pick<CategoryProps, 'name' | 'description'> {
+  update(
+    input: CategoryUpdateInput,
+  ): Pick<CategoryProps, 'name' | 'description'> {
     const nextName =
       input.name === undefined
         ? this.props.name

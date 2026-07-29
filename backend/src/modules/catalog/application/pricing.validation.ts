@@ -54,8 +54,10 @@ export function validateOptionalMonetary(
     return null;
   }
 
-  if ((input.amount === null && input.currency !== null) ||
-      (input.currency === null && input.amount !== null)) {
+  if (
+    (input.amount === null && input.currency !== null) ||
+    (input.currency === null && input.amount !== null)
+  ) {
     throw new BadRequestException(
       `${fieldPrefix} amount and currency must both be null to clear`,
     );
