@@ -35,6 +35,8 @@ model ProviderService {
   importTimestamp DateTime
   metadata        Json?
 
+  stagedServices StagedService[]
+
   @@unique([providerOrigin, externalId])
 }
 
@@ -47,6 +49,10 @@ model StagedService {
   proposedDescription   String?
   proposedCategoryId    String?
   proposedSocialNetwork String?
+
+  providerService ProviderService @relation(fields: [providerServiceId], references: [id], onDelete: Cascade)
+
+  @@index([providerServiceId, reviewStatus])
 }
 
 model Category {
@@ -87,7 +93,7 @@ model MasterCatalogSnapshotItem {
   sellingPriceAmount Int
   currency           String
   serviceStatus      String
-  snapshot           MasterCatalogSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  snapshot MasterCatalogSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
 
   @@index([snapshotId])
 }

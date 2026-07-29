@@ -34,15 +34,15 @@ const defaultTransport: BulkFollowsHttpTransport = (url, init) =>
 export const BULKFOLLOWS_PROVIDER_ORIGIN = 'bulkfollows';
 
 interface BulkFollowsRawEntry {
-  service: unknown;
-  name: unknown;
-  type: unknown;
-  category: unknown;
-  rate: unknown;
-  min: unknown;
-  max: unknown;
-  refill: unknown;
-  cancel: unknown;
+  service: number;
+  name: string;
+  type: string;
+  category: string;
+  rate: string | number;
+  min: string | number;
+  max: string | number;
+  refill: boolean;
+  cancel: boolean;
 }
 
 const NUMERIC_STRING_PATTERN = /^\d+(\.\d+)?$/;
@@ -57,6 +57,24 @@ function assertNumericString(
   index: number,
 ): asserts value is string {
   if (typeof value !== 'string' || !NUMERIC_STRING_PATTERN.test(value)) {
+    throw new Error(
+      `BulkFollows service entry at index ${index} has an invalid "${field}" value`,
+    );
+  }
+}
+
+function assertNumericValue(
+  value: unknown,
+  field: string,
+  index: number,
+): asserts value is string | number {
+  const isValidString =
+    typeof value === 'string' && NUMERIC_STRING_PATTERN.test(value);
+
+  const isValidNumber =
+    typeof value === 'number' && Number.isFinite(value) && value >= 0;
+
+  if (!isValidString && !isValidNumber) {
     throw new Error(
       `BulkFollows service entry at index ${index} has an invalid "${field}" value`,
     );
@@ -95,9 +113,9 @@ function parseRawEntry(entry: unknown, index: number): BulkFollowsRawEntry {
       `BulkFollows service entry at index ${index} has an invalid "category" value`,
     );
   }
-  assertNumericString(entry.rate, 'rate', index);
-  assertNumericString(entry.min, 'min', index);
-  assertNumericString(entry.max, 'max', index);
+  assertNumericValue(entry.rate, 'rate', index);
+  assertNumericValue(entry.min, 'min', index);
+  assertNumericValue(entry.max, 'max', index);
   if (typeof entry.refill !== 'boolean') {
     throw new Error(
       `BulkFollows service entry at index ${index} has an invalid "refill" value`,
@@ -127,7 +145,7 @@ function mapToProviderServicePayload(
 ): ProviderServicePayload {
   return {
     externalId: String(entry.service),
-    title: entry.name as string,
+    title: entry.name,
     rawPayload: entry,
   };
 }
