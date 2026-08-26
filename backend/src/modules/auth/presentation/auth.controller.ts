@@ -50,10 +50,7 @@ export class AuthController {
   @ApiOkResponse({
     description: 'Inicio de sesión correcto',
   })
-  @ApiNotImplementedResponse({
-    description: 'Flujo pendiente de implementación',
-  })
-  login(@Body() dto: LoginDto): never {
+  login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto);
   }
 

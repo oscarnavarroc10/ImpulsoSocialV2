@@ -15,6 +15,7 @@ export type BulkFollowsHttpTransport = (
     method: 'POST';
     headers: Record<string, string>;
     body: string;
+    signal?: AbortSignal;
   },
 ) => Promise<{
   ok: boolean;
@@ -24,6 +25,27 @@ export type BulkFollowsHttpTransport = (
 
 const defaultTransport: BulkFollowsHttpTransport = (url, init) =>
   fetch(url, init);
+
+const DEFAULT_REQUEST_TIMEOUT_MS = 10_000;
+
+/**
+ * Reads the configurable BulkFollows request timeout from the environment,
+ * defensively falling back to a safe default if unset, non-numeric, or
+ * out of range.
+ */
+function readRequestTimeoutMs(): number {
+  const raw = process.env.BULKFOLLOWS_REQUEST_TIMEOUT_MS;
+  if (!raw) {
+    return DEFAULT_REQUEST_TIMEOUT_MS;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_REQUEST_TIMEOUT_MS;
+  }
+
+  return parsed;
+}
 
 /**
  * Stable `providerOrigin` identifier for the BulkFollows provider, used by
@@ -49,18 +71,6 @@ const NUMERIC_STRING_PATTERN = /^\d+(\.\d+)?$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
-}
-
-function assertNumericString(
-  value: unknown,
-  field: string,
-  index: number,
-): asserts value is string {
-  if (typeof value !== 'string' || !NUMERIC_STRING_PATTERN.test(value)) {
-    throw new Error(
-      `BulkFollows service entry at index ${index} has an invalid "${field}" value`,
-    );
-  }
 }
 
 function assertNumericValue(
@@ -155,9 +165,9 @@ function mapToProviderServicePayload(
  * provider. Only implements the behavior explicitly confirmed by the
  * provider's documented `action=services` contract: a single POST request
  * with an `application/x-www-form-urlencoded` body containing `key` and
- * `action=services`, and a JSON array response. No retry, pagination, or
- * timeout behavior is implemented because the provider contract does not
- * document any.
+ * `action=services`, and a JSON array response. A single attempt is made
+ * per call (no automatic retry); requests are bounded by a configurable
+ * `AbortController`-based timeout (`BULKFOLLOWS_REQUEST_TIMEOUT_MS`).
  */
 @Injectable()
 export class BulkFollowsClient implements ProviderCatalogClient {
@@ -183,20 +193,41 @@ export class BulkFollowsClient implements ProviderCatalogClient {
     body.set('key', apiKey);
     body.set('action', 'services');
 
+    const timeoutMs = readRequestTimeoutMs();
+    const abortController = new AbortController();
+    const startedAt = Date.now();
+    const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
+
     let response: { ok: boolean; status: number; text: () => Promise<string> };
     try {
       response = await this.transport(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
+        signal: abortController.signal,
       });
-    } catch {
-      // Never include request init (which contains the API key) in the error.
-      this.logger.error('BulkFollows request failed due to a transport error');
+    } catch (error: unknown) {
+      clearTimeout(timeoutHandle);
+      // Never include request init (which contains the API key) or the raw
+      // error/body in logs or thrown errors — only sanitized, minimal info.
+      if (abortController.signal.aborted) {
+        this.throwTimeout(startedAt);
+      }
+      void error;
+      const elapsedMs = Date.now() - startedAt;
+      this.logger.error(
+        `BulkFollows request failed due to a transport error after ${elapsedMs}ms`,
+      );
       throw new Error('BulkFollows request failed due to a transport error');
     }
 
+    if (abortController.signal.aborted) {
+      clearTimeout(timeoutHandle);
+      this.throwTimeout(startedAt);
+    }
+
     if (!response.ok) {
+      clearTimeout(timeoutHandle);
       throw new Error(
         `BulkFollows request failed with HTTP status ${response.status}`,
       );
@@ -205,8 +236,18 @@ export class BulkFollowsClient implements ProviderCatalogClient {
     let rawText: string;
     try {
       rawText = await response.text();
-    } catch {
+    } catch (error: unknown) {
+      if (abortController.signal.aborted) {
+        this.throwTimeout(startedAt);
+      }
+      void error;
       throw new Error('Failed to read the BulkFollows response body');
+    } finally {
+      clearTimeout(timeoutHandle);
+    }
+
+    if (abortController.signal.aborted) {
+      this.throwTimeout(startedAt);
     }
 
     let parsed: unknown;
@@ -223,5 +264,11 @@ export class BulkFollowsClient implements ProviderCatalogClient {
     return parsed.map((entry: unknown, index: number) =>
       mapToProviderServicePayload(parseRawEntry(entry, index)),
     );
+  }
+
+  private throwTimeout(startedAt: number): never {
+    const elapsedMs = Date.now() - startedAt;
+    this.logger.error(`BulkFollows request timed out after ${elapsedMs}ms`);
+    throw new Error(`BulkFollows request timed out after ${elapsedMs}ms`);
   }
 }

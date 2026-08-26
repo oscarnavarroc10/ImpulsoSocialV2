@@ -148,6 +148,120 @@ describe('CurationService', () => {
     expect(result).toEqual({ stagedServiceId: 'staged-3', action: 'reject' });
   });
 
+  describe('provider rate normalization (deterministic, no floating point)', () => {
+    function stageWithRate(rate: unknown) {
+      stagedServiceRepository.findById.mockResolvedValue({
+        id: 'staged-rate',
+        providerServiceId: 'provider-rate',
+        reviewStatus: 'pending',
+      });
+      providerServiceRepository.findById.mockResolvedValue({
+        id: 'provider-rate',
+        rawPayload: { rate },
+      });
+      masterServiceRepository.findByProvenance.mockResolvedValue(null);
+      masterServiceRepository.createCurated.mockResolvedValue({
+        id: 'master-rate',
+      });
+    }
+
+    function approveDto() {
+      return StagedCurationDto.validate({
+        stagedServiceId: 'staged-rate',
+        action: 'approve',
+        curatedTitle: 'Curated title',
+        curatedDescription: 'Curated description',
+        curatedCategoryId: 'cat-1',
+        curatedSocialNetwork: 'Instagram',
+        defaultSellingPriceAmount: 300,
+        defaultSellingPriceCurrency: 'USD',
+        isVisible: true,
+      });
+    }
+
+    it('accepts an integer string rate ("5")', async () => {
+      stageWithRate('5');
+      await service.curate('admin-rate', approveDto());
+      expect(masterServiceRepository.createCurated).toHaveBeenCalledWith(
+        expect.objectContaining({ providerCostAmount: 500 }),
+      );
+    });
+
+    it('accepts a two-decimal string rate ("5.00")', async () => {
+      stageWithRate('5.00');
+      await service.curate('admin-rate', approveDto());
+      expect(masterServiceRepository.createCurated).toHaveBeenCalledWith(
+        expect.objectContaining({ providerCostAmount: 500 }),
+      );
+    });
+
+    it('accepts a two-decimal string rate ("5.99")', async () => {
+      stageWithRate('5.99');
+      await service.curate('admin-rate', approveDto());
+      expect(masterServiceRepository.createCurated).toHaveBeenCalledWith(
+        expect.objectContaining({ providerCostAmount: 599 }),
+      );
+    });
+
+    it('accepts a numeric rate (5)', async () => {
+      stageWithRate(5);
+      await service.curate('admin-rate', approveDto());
+      expect(masterServiceRepository.createCurated).toHaveBeenCalledWith(
+        expect.objectContaining({ providerCostAmount: 500 }),
+      );
+    });
+
+    it('accepts a numeric rate (5.5)', async () => {
+      stageWithRate(5.5);
+      await service.curate('admin-rate', approveDto());
+      expect(masterServiceRepository.createCurated).toHaveBeenCalledWith(
+        expect.objectContaining({ providerCostAmount: 550 }),
+      );
+    });
+
+    it('rejects a rate with 3+ decimal digits ("5.123")', async () => {
+      stageWithRate('5.123');
+      await expect(service.curate('admin-rate', approveDto())).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('rejects a negative rate ("-1.00")', async () => {
+      stageWithRate('-1.00');
+      await expect(service.curate('admin-rate', approveDto())).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('rejects a non-numeric rate ("abc")', async () => {
+      stageWithRate('abc');
+      await expect(service.curate('admin-rate', approveDto())).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('rejects an empty rate ("")', async () => {
+      stageWithRate('');
+      await expect(service.curate('admin-rate', approveDto())).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('rejects a rate with multiple decimal points ("5.5.5")', async () => {
+      stageWithRate('5.5.5');
+      await expect(service.curate('admin-rate', approveDto())).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('rejects a rate with thousands separators ("1,000.00")', async () => {
+      stageWithRate('1,000.00');
+      await expect(service.curate('admin-rate', approveDto())).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
   it('validates approval payload requirements', () => {
     expect(() =>
       StagedCurationDto.validate({

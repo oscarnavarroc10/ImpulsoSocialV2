@@ -34,15 +34,18 @@ function validEntry(overrides: Record<string, unknown> = {}) {
 describe('BulkFollowsClient (contract)', () => {
   const originalUrl = process.env.BULKFOLLOWS_API_URL;
   const originalKey = process.env.BULKFOLLOWS_API_KEY;
+  const originalTimeout = process.env.BULKFOLLOWS_REQUEST_TIMEOUT_MS;
 
   beforeEach(() => {
     process.env.BULKFOLLOWS_API_URL = TEST_API_URL;
     process.env.BULKFOLLOWS_API_KEY = TEST_API_KEY;
+    delete process.env.BULKFOLLOWS_REQUEST_TIMEOUT_MS;
   });
 
   afterEach(() => {
     process.env.BULKFOLLOWS_API_URL = originalUrl;
     process.env.BULKFOLLOWS_API_KEY = originalKey;
+    process.env.BULKFOLLOWS_REQUEST_TIMEOUT_MS = originalTimeout;
     jest.restoreAllMocks();
   });
 
@@ -457,6 +460,101 @@ describe('BulkFollowsClient (contract)', () => {
 
       expect(globalFetchSpy).not.toHaveBeenCalled();
       expect(transport).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('request timeout', () => {
+    it('succeeds when the response resolves before the timeout elapses', async () => {
+      process.env.BULKFOLLOWS_REQUEST_TIMEOUT_MS = '200';
+      const transport: BulkFollowsHttpTransport = (_url, init) =>
+        new Promise((resolve, reject) => {
+          const handle = setTimeout(
+            () => resolve(fakeResponse(JSON.stringify([validEntry()]))),
+            10,
+          );
+          init.signal?.addEventListener('abort', () => {
+            clearTimeout(handle);
+            reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+          });
+        });
+      const client = buildClient(transport);
+
+      const result = await client.fetchServices();
+
+      expect(result).toHaveLength(1);
+    });
+
+    it('aborts and produces a sanitized error when the request exceeds the timeout', async () => {
+      process.env.BULKFOLLOWS_REQUEST_TIMEOUT_MS = '20';
+      const transport: BulkFollowsHttpTransport = (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => {
+            reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+          });
+        });
+      const client = buildClient(transport);
+
+      await expect(client.fetchServices()).rejects.toThrow(/timed out/i);
+    });
+
+    it('keeps the timeout active while the response body is being read', async () => {
+      process.env.BULKFOLLOWS_REQUEST_TIMEOUT_MS = '20';
+      const transport: BulkFollowsHttpTransport = (_url, init) =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () =>
+            new Promise((_resolve, reject) => {
+              init.signal?.addEventListener('abort', () => {
+                reject(
+                  Object.assign(new Error('body aborted'), {
+                    name: 'AbortError',
+                  }),
+                );
+              });
+            }),
+        });
+      const client = buildClient(transport);
+
+      await expect(client.fetchServices()).rejects.toThrow(/timed out/i);
+    });
+
+    it('never leaks the API key or request body in a timeout error', async () => {
+      process.env.BULKFOLLOWS_REQUEST_TIMEOUT_MS = '20';
+      const transport: BulkFollowsHttpTransport = (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => {
+            reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+          });
+        });
+      const client = buildClient(transport);
+
+      let caught: unknown;
+      try {
+        await client.fetchServices();
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(Error);
+      expect((caught as Error).message).not.toContain(TEST_API_KEY);
+      expect((caught as Error).message).not.toContain('action=services');
+    });
+
+    it('falls back to the default timeout when the environment value is invalid', async () => {
+      process.env.BULKFOLLOWS_REQUEST_TIMEOUT_MS = 'not-a-number';
+      const transport: BulkFollowsHttpTransport = () =>
+        new Promise((resolve) => {
+          setTimeout(
+            () => resolve(fakeResponse(JSON.stringify([validEntry()]))),
+            30,
+          );
+        });
+      const client = buildClient(transport);
+
+      const result = await client.fetchServices();
+
+      expect(result).toHaveLength(1);
     });
   });
 });
