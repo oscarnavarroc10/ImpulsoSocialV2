@@ -12,8 +12,33 @@ const registeredUserSelect = {
   rol: true,
 } satisfies Prisma.UsuarioSelect;
 
+const authenticatedUserSelect = {
+  id: true,
+  tiendaId: true,
+  rol: true,
+  estado: true,
+} satisfies Prisma.UsuarioSelect;
+
+const loginUserSelect = {
+  id: true,
+  tiendaId: true,
+  nombre: true,
+  email: true,
+  passwordHash: true,
+  rol: true,
+  estado: true,
+} satisfies Prisma.UsuarioSelect;
+
 export type RegisteredUser = Prisma.UsuarioGetPayload<{
   select: typeof registeredUserSelect;
+}>;
+
+export type AuthenticatedUser = Prisma.UsuarioGetPayload<{
+  select: typeof authenticatedUserSelect;
+}>;
+
+export type LoginUser = Prisma.UsuarioGetPayload<{
+  select: typeof loginUserSelect;
 }>;
 
 export interface CreateRegisteredUserInput {
@@ -50,6 +75,27 @@ export class UsuarioRepository {
     return usuario !== null;
   }
 
+  findById(id: string): Promise<AuthenticatedUser | null> {
+    return this.prisma.usuario.findUnique({
+      where: {
+        id,
+      },
+      select: authenticatedUserSelect,
+    });
+  }
+
+  findForLogin(tiendaId: string, email: string): Promise<LoginUser | null> {
+    return this.prisma.usuario.findUnique({
+      where: {
+        tiendaId_email: {
+          tiendaId,
+          email,
+        },
+      },
+      select: loginUserSelect,
+    });
+  }
+
   async createRegisteredUser(
     input: CreateRegisteredUserInput,
   ): Promise<RegisteredUser> {
@@ -79,7 +125,6 @@ export class UsuarioRepository {
             },
           },
         },
-
         select: registeredUserSelect,
       });
     } catch (error: unknown) {
@@ -114,11 +159,6 @@ export class UsuarioRepository {
       );
     }
 
-    /*
-     * Algunos drivers no informan correctamente el nombre de la restricción.
-     * En esta operación, la colisión esperable es el índice único del correo
-     * por tienda; los UUID y el hash del refresh token se generan internamente.
-     */
     return true;
   }
 }

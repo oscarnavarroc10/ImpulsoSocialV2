@@ -21,19 +21,51 @@ function readPlatformBaseCurrency(): string {
   return currency;
 }
 
+// Whole part plus at most 2 fractional digits; no sign, no thousands separators.
+const DECIMAL_MINOR_UNITS_PATTERN = /^\d+(\.\d{1,2})?$/;
+
+/**
+ * Converts a non-negative decimal amount (at most 2 fractional digits) into
+ * integer minor units (cents) using string/BigInt arithmetic exclusively, so
+ * the conversion never routes through floating-point `Number` multiplication.
+ */
+function parseDecimalToMinorUnits(
+  value: unknown,
+  errorMessage: string,
+): number {
+  if (typeof value === 'number' && !Number.isFinite(value)) {
+    throw new BadRequestException(errorMessage);
+  }
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    throw new BadRequestException(errorMessage);
+  }
+
+  const raw = typeof value === 'number' ? value.toString() : value;
+  if (!DECIMAL_MINOR_UNITS_PATTERN.test(raw)) {
+    throw new BadRequestException(errorMessage);
+  }
+
+  const [wholePart, fractionalPart = ''] = raw.split('.');
+  const minorUnits =
+    BigInt(wholePart) * 100n + BigInt(fractionalPart.padEnd(2, '0'));
+
+  if (minorUnits > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new BadRequestException(errorMessage);
+  }
+
+  return Number(minorUnits);
+}
+
 function parseProviderCostMinorUnits(rawPayload: unknown): number {
   if (!rawPayload || typeof rawPayload !== 'object') {
     throw new BadRequestException('Provider payload is missing for approval');
   }
 
   const rate = (rawPayload as Record<string, unknown>).rate;
-  if (typeof rate !== 'string' || !/^\d+(\.\d+)?$/.test(rate)) {
-    throw new BadRequestException(
-      'Provider payload does not contain a normalized rate string',
-    );
-  }
-
-  return Math.round(Number(rate) * 100);
+  return parseDecimalToMinorUnits(
+    rate,
+    'Provider payload does not contain a normalized rate value',
+  );
 }
 
 @Injectable()

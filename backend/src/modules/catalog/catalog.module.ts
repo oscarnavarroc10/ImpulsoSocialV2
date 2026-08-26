@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProviderServiceRepository } from './infrastructure/provider-service.repository';
 import { StagedServiceRepository } from './infrastructure/staged-service.repository';
@@ -28,7 +29,7 @@ import { SnapshotService } from './snapshot/snapshot.service';
 import { SnapshotController } from './presentation/snapshot.controller';
 import { ExportService } from './snapshot/export.service';
 import { SnapshotExportController } from './presentation/snapshot-export.controller';
-import { DevelopmentCatalogAuthorization } from './security/development-catalog-authorization';
+import { CatalogAuthorizationService } from './security/catalog-authorization.service';
 
 // Minimal fail-closed adapter for missing external authorization integration.
 /*const FailClosedAuthProvider = {
@@ -43,6 +44,7 @@ import { DevelopmentCatalogAuthorization } from './security/development-catalog-
 };
 */
 @Module({
+  imports: [AuthModule],
   controllers: [
     StagedServiceController,
     SyncController,
@@ -74,7 +76,7 @@ import { DevelopmentCatalogAuthorization } from './security/development-catalog-
     CatalogAuthorizationGuard,
     {
       provide: CATALOG_AUTHORIZATION,
-      useClass: DevelopmentCatalogAuthorization,
+      useClass: CatalogAuthorizationService,
     },
     BulkFollowsClient,
     { provide: PROVIDER_CATALOG_CLIENT, useExisting: BulkFollowsClient },

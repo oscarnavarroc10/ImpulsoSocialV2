@@ -3,14 +3,18 @@ import {
   CanActivate,
   ExecutionContext,
   Inject,
-  ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import {
+  AuthenticatedPrincipal,
   CatalogAuthorization,
   CATALOG_AUTHORIZATION,
 } from './catalog-authorization.interface';
 
-const REQUIRED_ROLE = 'catalog:admin';
+export type CatalogAuthenticatedRequest = Request & {
+  principal?: AuthenticatedPrincipal;
+};
 
 @Injectable()
 export class CatalogAuthorizationGuard implements CanActivate {
@@ -19,24 +23,20 @@ export class CatalogAuthorizationGuard implements CanActivate {
     private readonly auth: CatalogAuthorization | null,
   ) {}
 
-  async canActivate(_context: ExecutionContext): Promise<boolean> {
-    void _context;
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     // Fail closed by default
     if (!this.auth) {
-      throw new ForbiddenException('Authorization service not available');
+      throw new UnauthorizedException('Authorization service not available');
     }
 
-    const principal = await this.auth.getPrincipal();
-    if (!principal) {
-      throw new ForbiddenException('No authenticated principal');
-    }
+    const request = context
+      .switchToHttp()
+      .getRequest<CatalogAuthenticatedRequest>();
 
-    const has = await this.auth.hasRole(REQUIRED_ROLE);
-    if (!has) {
-      throw new ForbiddenException(
-        'Insufficient role for catalog administration',
-      );
-    }
+    const principal = await this.auth.authenticate(
+      request.headers?.authorization,
+    );
+    request.principal = principal;
 
     return true;
   }

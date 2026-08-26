@@ -2,18 +2,15 @@ import {
   BadRequestException,
   Body,
   Controller,
-  ForbiddenException,
   Get,
-  Inject,
   Post,
+  Req,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { DeprecationService } from '../application/deprecation.service';
-import {
-  CATALOG_AUTHORIZATION,
-  CatalogAuthorization,
-} from '../security/catalog-authorization.interface';
 import { CatalogAuthorizationGuard } from '../security/catalog-authorization.guard';
+import type { CatalogAuthenticatedRequest } from '../security/catalog-authorization.guard';
 
 function parseMasterServiceId(body: unknown): string {
   if (!body || typeof body !== 'object') {
@@ -32,11 +29,7 @@ function parseMasterServiceId(body: unknown): string {
 @Controller('catalog/deprecations')
 @UseGuards(CatalogAuthorizationGuard)
 export class DeprecationController {
-  constructor(
-    private readonly deprecationService: DeprecationService,
-    @Inject(CATALOG_AUTHORIZATION)
-    private readonly authorization: CatalogAuthorization | null,
-  ) {}
+  constructor(private readonly deprecationService: DeprecationService) {}
 
   @Get()
   async listPending() {
@@ -44,22 +37,20 @@ export class DeprecationController {
   }
 
   @Post('confirm')
-  async confirm(@Body() body: unknown) {
-    const actorId = await this.getActorId();
+  async confirm(
+    @Body() body: unknown,
+    @Req() request: CatalogAuthenticatedRequest,
+  ) {
+    const actorId = this.getActorId(request);
     const masterServiceId = parseMasterServiceId(body);
     return this.deprecationService.confirmDeprecation(actorId, masterServiceId);
   }
 
-  private async getActorId(): Promise<string> {
-    if (!this.authorization) {
-      throw new ForbiddenException('Authorization service not available');
+  private getActorId(request: CatalogAuthenticatedRequest): string {
+    if (!request.principal?.userId) {
+      throw new UnauthorizedException('No authenticated principal');
     }
 
-    const principal = await this.authorization.getPrincipal();
-    if (!principal?.id) {
-      throw new ForbiddenException('No authenticated principal');
-    }
-
-    return principal.id;
+    return request.principal.userId;
   }
 }
