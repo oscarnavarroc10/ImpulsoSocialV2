@@ -15,6 +15,7 @@ const registeredUserSelect = {
 const authenticatedUserSelect = {
   id: true,
   tiendaId: true,
+  email: true,
   rol: true,
   estado: true,
 } satisfies Prisma.UsuarioSelect;

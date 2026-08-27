@@ -9,3 +9,15 @@ export class RefreshTokenDto {
   @IsNotEmpty()
   refreshToken!: string;
 }
+
+export class RefreshResponseDto {
+  @ApiProperty({
+    description: 'JWT de corta duración para acceder a endpoints protegidos',
+  })
+  accessToken!: string;
+
+  @ApiProperty({
+    description: 'JWT de larga duración para renovar la sesión',
+  })
+  refreshToken!: string;
+}

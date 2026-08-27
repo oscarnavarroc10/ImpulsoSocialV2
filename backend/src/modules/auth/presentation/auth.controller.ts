@@ -1,18 +1,21 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiInternalServerErrorResponse,
-  ApiNotImplementedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
 import { AuthService } from '../application/auth.service';
 import {
   AuthResponseDto,
   LoginDto,
+  RefreshResponseDto,
   RefreshTokenDto,
   RegisterDto,
 } from '../application/dto';
@@ -53,6 +56,12 @@ export class AuthController {
   login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto);
   }
+}
+
+@ApiTags('Auth')
+@Controller('v1/auth')
+export class AuthSessionController {
+  constructor(private readonly authService: AuthService) {}
 
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
@@ -61,26 +70,30 @@ export class AuthController {
   })
   @ApiOkResponse({
     description: 'Tokens renovados correctamente',
+    type: RefreshResponseDto,
   })
-  @ApiNotImplementedResponse({
-    description: 'Flujo pendiente de implementación',
+  @ApiBadRequestResponse({
+    description: 'refreshToken es requerido y debe ser una cadena no vacía',
   })
-  refresh(@Body() dto: RefreshTokenDto): never {
+  @ApiUnauthorizedResponse({
+    description: 'Sesión inválida',
+  })
+  refresh(@Body() dto: RefreshTokenDto): Promise<RefreshResponseDto> {
     return this.authService.refresh(dto);
   }
 
   @Post('logout')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Cerrar sesión',
   })
-  @ApiOkResponse({
-    description: 'Sesión cerrada correctamente',
+  @ApiNoContentResponse({
+    description: 'Sesión cerrada correctamente (idempotente)',
   })
-  @ApiNotImplementedResponse({
-    description: 'Flujo pendiente de implementación',
+  @ApiBadRequestResponse({
+    description: 'refreshToken es requerido y debe ser una cadena no vacía',
   })
-  logout(@Body() dto: RefreshTokenDto): never {
-    return this.authService.logout(dto);
+  async logout(@Body() dto: RefreshTokenDto): Promise<void> {
+    await this.authService.logout(dto);
   }
 }
