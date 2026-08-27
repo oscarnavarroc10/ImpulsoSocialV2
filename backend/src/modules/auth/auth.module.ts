@@ -9,12 +9,15 @@ import { BcryptPasswordHasher } from './infrastructure/bcrypt-password-hasher';
 import { SesionRepository } from './infrastructure/sesion.repository';
 import { TiendaRepository } from './infrastructure/tienda.repository';
 import { UsuarioRepository } from './infrastructure/usuario.repository';
-import { AuthController } from './presentation/auth.controller';
+import {
+  AuthController,
+  AuthSessionController,
+} from './presentation/auth.controller';
 import { RefreshTokenHasher } from './security/refresh-token-hasher';
 
 @Module({
   imports: [JwtModule.register({})],
-  controllers: [AuthController],
+  controllers: [AuthController, AuthSessionController],
   providers: [
     PrismaService,
     AuthService,

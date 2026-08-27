@@ -4,7 +4,6 @@ import {
   Inject,
   Injectable,
   InternalServerErrorException,
-  NotImplementedException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -15,10 +14,19 @@ import { SesionRepository } from '../infrastructure/sesion.repository';
 import { TiendaRepository } from '../infrastructure/tienda.repository';
 import { UsuarioRepository } from '../infrastructure/usuario.repository';
 import { RefreshTokenHasher } from '../security/refresh-token-hasher';
+import type { VerifiedJwtPayload } from '../security/jwt-payload.interface';
 import { AuthTokenService } from './auth-token.service';
-import { AuthResponseDto, LoginDto, RefreshTokenDto, RegisterDto } from './dto';
+import {
+  AuthResponseDto,
+  LoginDto,
+  RefreshResponseDto,
+  RefreshTokenDto,
+  RegisterDto,
+} from './dto';
 import { PASSWORD_HASHER } from './password-hasher.interface';
 import type { PasswordHasher } from './password-hasher.interface';
+
+const GENERIC_SESSION_ERROR = 'Sesión inválida';
 
 @Injectable()
 export class AuthService {
@@ -190,20 +198,92 @@ export class AuthService {
     return tienda;
   }
 
-  refresh(dto: RefreshTokenDto): never {
-    void dto;
+  async refresh(dto: RefreshTokenDto): Promise<RefreshResponseDto> {
+    let payload: VerifiedJwtPayload;
+    try {
+      payload = await this.authTokenService.verifyRefreshToken(
+        dto.refreshToken,
+      );
+    } catch {
+      throw new UnauthorizedException(GENERIC_SESSION_ERROR);
+    }
 
-    throw new NotImplementedException(
-      'La renovación de sesión todavía no está implementada',
+    const oldRefreshTokenHash = this.refreshTokenHasher.hash(dto.refreshToken);
+    const sesion =
+      await this.sesionRepository.findByRefreshTokenHash(oldRefreshTokenHash);
+
+    if (
+      !sesion ||
+      sesion.id !== payload.sid ||
+      sesion.usuarioId !== payload.sub ||
+      sesion.revocadaEn !== null ||
+      sesion.expiraEn.getTime() <= Date.now()
+    ) {
+      throw new UnauthorizedException(GENERIC_SESSION_ERROR);
+    }
+
+    const usuario = await this.usuarioRepository.findById(payload.sub);
+    if (!usuario || usuario.estado !== 'activo') {
+      throw new UnauthorizedException(GENERIC_SESSION_ERROR);
+    }
+
+    const tienda = await this.resolveConfiguredActiveTenant();
+    if (
+      !tienda ||
+      tienda.id !== usuario.tiendaId ||
+      tienda.id !== payload.tiendaId
+    ) {
+      throw new UnauthorizedException(GENERIC_SESSION_ERROR);
+    }
+
+    const newSessionId = randomUUID();
+    const tokenPair = await this.authTokenService.generateTokenPair({
+      sub: usuario.id,
+      sid: newSessionId,
+      email: usuario.email,
+      rol: usuario.rol,
+      tiendaId: usuario.tiendaId,
+    });
+
+    const verifiedNewRefreshToken =
+      await this.authTokenService.verifyRefreshToken(tokenPair.refreshToken);
+    const newRefreshTokenHash = this.refreshTokenHasher.hash(
+      tokenPair.refreshToken,
     );
+
+    const rotated = await this.sesionRepository.rotate({
+      oldSessionId: sesion.id,
+      usuarioId: usuario.id,
+      oldRefreshTokenHash,
+      newSessionId,
+      newRefreshTokenHash,
+      newExpiraEn: new Date(verifiedNewRefreshToken.exp * 1000),
+    });
+
+    if (!rotated) {
+      throw new UnauthorizedException(GENERIC_SESSION_ERROR);
+    }
+
+    return {
+      accessToken: tokenPair.accessToken,
+      refreshToken: tokenPair.refreshToken,
+    };
   }
 
-  logout(dto: RefreshTokenDto): never {
-    void dto;
+  async logout(dto: RefreshTokenDto): Promise<void> {
+    const refreshTokenHash = this.refreshTokenHasher.hash(dto.refreshToken);
+    await this.sesionRepository.revokeActiveByHash(refreshTokenHash);
+  }
 
-    throw new NotImplementedException(
-      'El cierre de sesión todavía no está implementado',
-    );
+  private async resolveConfiguredActiveTenant() {
+    const rawSlug = this.configService.get<string>('DEFAULT_TENANT_SLUG');
+    const slug = rawSlug?.trim().toLowerCase();
+    if (!slug) {
+      return null;
+    }
+
+    const tienda = await this.tiendaRepository.findBySlug(slug);
+    return tienda && tienda.activa ? tienda : null;
   }
 
   private normalizeEmail(email: string): string {
