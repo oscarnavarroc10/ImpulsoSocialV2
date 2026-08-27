@@ -30,6 +30,9 @@ import { SnapshotController } from './presentation/snapshot.controller';
 import { ExportService } from './snapshot/export.service';
 import { SnapshotExportController } from './presentation/snapshot-export.controller';
 import { CatalogAuthorizationService } from './security/catalog-authorization.service';
+import { PublicCatalogRepository } from './infrastructure/public-catalog.repository';
+import { PublicCatalogService } from './application/public-catalog.service';
+import { PublicCatalogController } from './presentation/public-catalog.controller';
 
 // Minimal fail-closed adapter for missing external authorization integration.
 /*const FailClosedAuthProvider = {
@@ -54,6 +57,7 @@ import { CatalogAuthorizationService } from './security/catalog-authorization.se
     TenantServiceOverrideController,
     SnapshotController,
     SnapshotExportController,
+    PublicCatalogController,
   ],
   providers: [
     PrismaService,
@@ -80,6 +84,8 @@ import { CatalogAuthorizationService } from './security/catalog-authorization.se
     },
     BulkFollowsClient,
     { provide: PROVIDER_CATALOG_CLIENT, useExisting: BulkFollowsClient },
+    PublicCatalogRepository,
+    PublicCatalogService,
   ],
   exports: [
     ProviderServiceRepository,
