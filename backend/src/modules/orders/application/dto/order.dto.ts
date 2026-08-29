@@ -1,11 +1,15 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
+import { EstadoOrden } from '@prisma/client';
 import {
+  IsEnum,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   IsUrl,
   Min,
+  Max,
   MaxLength,
 } from 'class-validator';
 
@@ -48,7 +52,55 @@ export class OrderResponseDto {
   @ApiProperty() target!: string;
   @ApiProperty() quantity!: number;
   @ApiProperty({ type: OrderPriceDto }) totalPrice!: OrderPriceDto;
-  @ApiProperty({ enum: ['enviando', 'enviadaProveedor', 'reembolsada'] })
+  @ApiProperty({ enum: EstadoOrden })
   status!: string;
   @ApiProperty() createdAt!: Date;
+}
+
+export class OrderListQueryDto {
+  @ApiPropertyOptional({
+    description: 'Page number (1-based).',
+    default: 1,
+    minimum: 1,
+    example: 1,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({
+    description: 'Page size.',
+    default: 20,
+    minimum: 1,
+    maximum: 100,
+    example: 20,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+
+  @ApiPropertyOptional({
+    enum: EstadoOrden,
+    description: 'Exact status filter.',
+  })
+  @IsOptional()
+  @IsEnum(EstadoOrden)
+  status?: EstadoOrden;
+}
+
+export class OrderPaginationDto {
+  @ApiProperty({ example: 1 }) page!: number;
+  @ApiProperty({ example: 20 }) limit!: number;
+  @ApiProperty({ example: 1 }) total!: number;
+  @ApiProperty({ example: 1 }) totalPages!: number;
+}
+
+export class OrderListResponseDto {
+  @ApiProperty({ type: [OrderResponseDto] }) items!: OrderResponseDto[];
+  @ApiProperty({ type: OrderPaginationDto }) pagination!: OrderPaginationDto;
 }

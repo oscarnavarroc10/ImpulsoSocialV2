@@ -33,6 +33,9 @@ export interface OrderView {
 export interface OrderReplay extends OrderView {
   requestFingerprint: string | null;
 }
+export interface OrderListFilters {
+  status?: EstadoOrden;
+}
 
 export class InvalidProviderContractError extends Error {}
 
@@ -124,11 +127,7 @@ export class OrderRepository {
 
   private rawServiceMatches(value: unknown, externalId: string): boolean {
     if (value === undefined) return true;
-    if (
-      typeof value === 'number' &&
-      Number.isSafeInteger(value) &&
-      value >= 0
-    )
+    if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0)
       return String(value) === externalId;
     return (
       typeof value === 'string' &&
@@ -152,6 +151,45 @@ export class OrderRepository {
           requestFingerprint: order.requestFingerprint,
         }
       : null;
+  }
+
+  async count(
+    tenantId: string,
+    userId: string,
+    filters: OrderListFilters,
+  ): Promise<number> {
+    return this.prisma.orden.count({
+      where: this.scopedWhere(tenantId, userId, filters),
+    });
+  }
+
+  async findMany(
+    tenantId: string,
+    userId: string,
+    filters: OrderListFilters,
+    skip: number,
+    take: number,
+  ): Promise<OrderView[]> {
+    const rows = await this.prisma.orden.findMany({
+      where: this.scopedWhere(tenantId, userId, filters),
+      select: this.viewSelect,
+      orderBy: [{ creadaEn: 'desc' }, { id: 'desc' }],
+      skip,
+      take,
+    });
+    return rows.map((row) => this.toView(row));
+  }
+
+  async findById(
+    tenantId: string,
+    userId: string,
+    id: string,
+  ): Promise<OrderView | null> {
+    const row = await this.prisma.orden.findFirst({
+      where: { id, tiendaId: tenantId, usuarioId: userId },
+      select: this.viewSelect,
+    });
+    return row ? this.toView(row) : null;
   }
 
   async createPurchase(
@@ -358,6 +396,18 @@ export class OrderRepository {
       });
       return this.toView(result);
     });
+  }
+
+  private scopedWhere(
+    tenantId: string,
+    userId: string,
+    filters: OrderListFilters,
+  ): Prisma.OrdenWhereInput {
+    return {
+      tiendaId: tenantId,
+      usuarioId: userId,
+      ...(filters.status ? { estado: filters.status } : {}),
+    };
   }
 
   private calculate(rate: number, quantity: number): number {

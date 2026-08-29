@@ -6,7 +6,12 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
-import { CreateOrderDto, OrderResponseDto } from './dto/order.dto';
+import {
+  CreateOrderDto,
+  OrderListQueryDto,
+  OrderListResponseDto,
+  OrderResponseDto,
+} from './dto/order.dto';
 import { OrderPrincipal } from '../security/order-authentication.guard';
 import {
   InvalidProviderContractError,
@@ -17,12 +22,52 @@ import {
 } from '../infrastructure/order.repository';
 import { BulkFollowsOrderClient } from '../infrastructure/bulkfollows-order.client';
 
+const DEFAULT_PAGE = 1;
+const DEFAULT_LIMIT = 20;
+
 @Injectable()
 export class OrderService {
   constructor(
     private readonly repository: OrderRepository,
     private readonly provider: BulkFollowsOrderClient,
   ) {}
+
+  async list(
+    query: OrderListQueryDto,
+    principal: OrderPrincipal,
+  ): Promise<OrderListResponseDto> {
+    const page = query.page ?? DEFAULT_PAGE;
+    const limit = query.limit ?? DEFAULT_LIMIT;
+    const filters = { status: query.status };
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      this.repository.findMany(
+        principal.tenantId,
+        principal.userId,
+        filters,
+        skip,
+        limit,
+      ),
+      this.repository.count(principal.tenantId, principal.userId, filters),
+    ]);
+    return {
+      items,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  async getById(
+    id: string,
+    principal: OrderPrincipal,
+  ): Promise<OrderResponseDto> {
+    const order = await this.repository.findById(
+      principal.tenantId,
+      principal.userId,
+      id,
+    );
+    if (!order) throw new NotFoundException('Order not found');
+    return order;
+  }
 
   async create(
     dto: CreateOrderDto,
@@ -102,8 +147,7 @@ export class OrderService {
       return { order: this.publicOrder(order), statusCode: 200 };
     this.assertProviderReady();
     const candidate = await this.findCandidate(input);
-    if (!candidate)
-      return { order: this.publicOrder(order), statusCode: 200 };
+    if (!candidate) return { order: this.publicOrder(order), statusCode: 200 };
     return this.claimAndSubmit(order, input, candidate.externalId, true);
   }
 
@@ -195,8 +239,7 @@ export class OrderService {
       throw new ConflictException('Idempotency key conflict');
     return {
       order: this.publicOrder(current),
-      statusCode:
-        current.status === 'enviando' ? 202 : replay ? 200 : 201,
+      statusCode: current.status === 'enviando' ? 202 : replay ? 200 : 201,
     };
   }
 }
