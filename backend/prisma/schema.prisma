@@ -319,6 +319,8 @@ model Orden {
   canceladaEn        DateTime?
   creadaEn           DateTime    @default(now())
   actualizadaEn      DateTime    @updatedAt
+  idempotencyKey     String?
+  requestFingerprint String?     @db.Char(64)
 
   tienda   Tienda        @relation(fields: [tiendaId], references: [id], onDelete: Restrict)
   usuario  Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
@@ -329,6 +331,7 @@ model Orden {
   solicitudesReposicion  SolicitudReposicion[]
   solicitudesCancelacion SolicitudCancelacion[]
 
+  @@unique([tiendaId, usuarioId, idempotencyKey])
   @@index([tiendaId, estado])
   @@index([usuarioId, creadaEn])
   @@index([servicioId])
@@ -342,7 +345,6 @@ model OrdenProveedor {
   idExterno         String?
   estadoExterno     String?
   cargoProveedor    Int?
-  moneda            String?
   solicitudOriginal Json?
   respuestaOriginal Json?
   ultimaConsultaEn  DateTime?
