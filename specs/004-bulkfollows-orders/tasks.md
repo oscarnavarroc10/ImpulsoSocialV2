@@ -6,33 +6,33 @@
 
 ## Phase 1: Additive idempotency persistence
 
-- [ ] **T001** Add nullable `idempotencyKey` and 64-character `requestFingerprint` fields to `Orden`, add the tenant/user/key unique constraint, and generate one reviewable additive migration without modifying any other model/enum; run Prisma format, validate, and generate — `backend/prisma/schema.prisma`, `backend/prisma/migrations/<timestamp>_add_order_idempotency/migration.sql`
+- [x] **T001** Add nullable `idempotencyKey` and 64-character `requestFingerprint` fields to `Orden`, add the tenant/user/key unique constraint, and generate one reviewable additive migration without modifying any other model/enum; run Prisma format, validate, and generate — `backend/prisma/schema.prisma`, `backend/prisma/migrations/<timestamp>_add_order_idempotency/migration.sql`
 
 **Independent completion**: Existing orders remain valid with null fields, new compound uniqueness is database-enforced, Prisma Client generates, and the migration contains no destructive/unrelated SQL.
 
 ## Phase 2: Authenticated public contract
 
-- [ ] **T002** Add the exact validated order request/response DTOs, an orders-local access-token/session/user guard with server-derived tenant/user principal, the Swagger-documented `POST /v1/orders` controller, bearer Swagger scheme, and module/application wiring; preserve all existing routes and behavior — `backend/src/modules/orders/application/dto/order.dto.ts`, `backend/src/modules/orders/security/order-authentication.guard.ts`, `backend/src/modules/orders/presentation/order.controller.ts`, `backend/src/modules/orders/orders.module.ts`, `backend/src/app.module.ts`, `backend/src/main.ts`
+- [x] **T002** Add the exact validated order request/response DTOs, an orders-local access-token/session/user guard with server-derived tenant/user principal, the Swagger-documented `POST /v1/orders` controller, bearer Swagger scheme, and module/application wiring; preserve all existing routes and behavior — `backend/src/modules/orders/application/dto/order.dto.ts`, `backend/src/modules/orders/security/order-authentication.guard.ts`, `backend/src/modules/orders/presentation/order.controller.ts`, `backend/src/modules/orders/orders.module.ts`, `backend/src/app.module.ts`, `backend/src/main.ts`
 
 **Independent completion**: Swagger accepts bearer access tokens, the route rejects missing/invalid authentication and invalid `Idempotency-Key`/body values, request DTOs cannot select tenant/user/price, and the response schema contains only approved safe fields.
 
 ## Phase 3: Atomic purchase and idempotency
 
-- [ ] **T003** Implement tenant-scoped eligible service/provenance resolution, strict Default provider constraint parsing, exact per-1,000 `BigInt` price calculation, SHA-256 canonical request fingerprint, scoped replay/conflict handling, and the one-transaction order creation + conditional wallet debit + purchase movement + initial history flow; implement conditional provider claim and exact accepted/rejected/unknown persistence operations — `backend/src/modules/orders/infrastructure/order.repository.ts`, `backend/src/modules/orders/application/order.service.ts`
+- [x] **T003** Implement tenant-scoped eligible service/provenance resolution, strict Default provider constraint parsing, exact per-1,000 `BigInt` price calculation, SHA-256 canonical request fingerprint, scoped replay/conflict handling, and the one-transaction order creation + conditional wallet debit + purchase movement + initial history flow; implement conditional provider claim and exact accepted/rejected/unknown persistence operations — `backend/src/modules/orders/infrastructure/order.repository.ts`, `backend/src/modules/orders/application/order.service.ts`
 
 **Independent completion**: Same-key/same-request returns one order, different payload conflicts, concurrent purchase fixtures debit once, insufficient balance and all validation failures write nothing, only one caller can claim submission, and a rejection can credit exactly once.
 
 ## Phase 4: One-attempt provider submission
 
-- [ ] **T004** Implement the dedicated fake-transport-testable BulkFollows order client and connect it to `OrderService`: readiness before debit; one form POST with `key`, `action=add`, `service`, `link`, `quantity`; whole-response timeout; accepted `{order}`, explicit `{error}`, and ambiguous outcome discrimination; no credential/raw-body logging; no automatic retry — `backend/src/modules/orders/infrastructure/bulkfollows-order.client.ts`, `backend/src/modules/orders/application/order.service.ts`, `backend/src/modules/orders/orders.module.ts`
+- [x] **T004** Implement the dedicated fake-transport-testable BulkFollows order client and connect it to `OrderService`: readiness before debit; one form POST with `key`, `action=add`, `service`, `link`, `quantity`; whole-response timeout; accepted `{order}`, explicit `{error}`, and ambiguous outcome discrimination; no credential/raw-body logging; no automatic retry — `backend/src/modules/orders/infrastructure/bulkfollows-order.client.ts`, `backend/src/modules/orders/application/order.service.ts`, `backend/src/modules/orders/orders.module.ts`
 
 **Independent completion**: Accepted response stores the provider ID privately and returns `enviadaProveedor`; explicit rejection refunds once and returns `reembolsada`; timeout/transport/HTTP/body/JSON/shape ambiguity returns `enviando` with HTTP 202, keeps the debit, and invokes the transport once.
 
 ## Phase 5: Focused verification
 
-- [ ] **T005** Add typed focused tests covering every money formula, constraint, tenant/auth boundary, wallet transaction predicate, idempotency race/replay/conflict, provider claim, accepted/rejected/ambiguous outcome, provider timeout/secret-sanitization, HTTP status/validation/Swagger contract, and recursive safe-response requirement listed in `plan.md` — `backend/test/unit/orders/order.service.spec.ts`, `backend/test/contract/orders/bulkfollows-order.client.spec.ts`, `backend/test/contract/orders/order.controller.spec.ts`
+- [x] **T005** Add typed focused tests covering every money formula, constraint, tenant/auth boundary, wallet transaction predicate, idempotency race/replay/conflict, provider claim, accepted/rejected/ambiguous outcome, provider timeout/secret-sanitization, HTTP status/validation/Swagger contract, and recursive safe-response requirement listed in `plan.md` — `backend/test/unit/orders/order.service.spec.ts`, `backend/test/contract/orders/bulkfollows-order.client.spec.ts`, `backend/test/contract/orders/order.controller.spec.ts`
 
-- [ ] **T006** Run the exact Prisma, build, focused ESLint, three focused Jest suites, full Jest regression, and root diff checks from `plan.md`; report exact suite/test counts, warnings, migration name, modified files, and stop without manual provider submission or starting Feature 005.
+- [x] **T006** Run the exact Prisma, build, focused ESLint, three focused Jest suites, full Jest regression, and root diff checks from `plan.md`; report exact suite/test counts, warnings, migration name, modified files, and stop without manual provider submission or starting Feature 005.
 
 ## Dependencies and Execution Order
 
