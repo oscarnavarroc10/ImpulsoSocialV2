@@ -349,6 +349,84 @@ describe('OrderService', () => {
   });
 });
 
+describe('OrderService read flow', () => {
+  function setupRead() {
+    const findMany = jest.fn().mockResolvedValue([order]);
+    const count = jest.fn().mockResolvedValue(1);
+    const findById = jest.fn().mockResolvedValue(order);
+    const repository = {
+      findMany,
+      count,
+      findById,
+    } as unknown as OrderRepository;
+    const provider = {} as unknown as BulkFollowsOrderClient;
+    return {
+      service: new OrderService(repository, provider),
+      findMany,
+      count,
+      findById,
+    };
+  }
+
+  it('applies default pagination and forwards the principal scope', async () => {
+    const { service, findMany, count } = setupRead();
+    const response = await service.list({}, principal);
+    expect(findMany).toHaveBeenCalledWith(
+      principal.tenantId,
+      principal.userId,
+      { status: undefined },
+      0,
+      20,
+    );
+    expect(count).toHaveBeenCalledWith(principal.tenantId, principal.userId, {
+      status: undefined,
+    });
+    expect(response.pagination).toEqual({
+      page: 1,
+      limit: 20,
+      total: 1,
+      totalPages: 1,
+    });
+  });
+
+  it('computes skip from an explicit page/limit and forwards the status filter', async () => {
+    const { service, findMany, count } = setupRead();
+    await service.list(
+      { page: 3, limit: 10, status: 'enviadaProveedor' },
+      principal,
+    );
+    expect(findMany).toHaveBeenCalledWith(
+      principal.tenantId,
+      principal.userId,
+      { status: 'enviadaProveedor' },
+      20,
+      10,
+    );
+    expect(count).toHaveBeenCalledWith(principal.tenantId, principal.userId, {
+      status: 'enviadaProveedor',
+    });
+  });
+
+  it('returns the safe order shape for a scoped detail lookup', async () => {
+    const { service, findById } = setupRead();
+    const result = await service.getById('order-1', principal);
+    expect(findById).toHaveBeenCalledWith(
+      principal.tenantId,
+      principal.userId,
+      'order-1',
+    );
+    expect(result).toEqual(order);
+  });
+
+  it('returns a uniform 404 for a missing or foreign order', async () => {
+    const { service, findById } = setupRead();
+    jest.mocked(findById).mockResolvedValue(null);
+    await expect(service.getById('missing', principal)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+});
+
 describe('OrderRepository transactions', () => {
   const dbOrder = {
     id: 'order-1',
@@ -539,5 +617,98 @@ describe('OrderRepository transactions', () => {
     ).toBe(false);
     expect(tx.ordenProveedor.create).toHaveBeenCalledTimes(1);
     expect(tx.historialOrden.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('scopes findMany by tenant/user, applies the status filter, sort, and pagination', async () => {
+    const findMany = jest.fn().mockResolvedValue([dbOrder]);
+    const prisma = { orden: { findMany } } as unknown as PrismaService;
+    const repository = new OrderRepository(prisma);
+    const rows = await repository.findMany(
+      'tenant-1',
+      'user-1',
+      { status: 'enviadaProveedor' },
+      20,
+      10,
+    );
+    expect(findMany).toHaveBeenCalledWith({
+      where: {
+        tiendaId: 'tenant-1',
+        usuarioId: 'user-1',
+        estado: 'enviadaProveedor',
+      },
+      select: {
+        id: true,
+        servicioId: true,
+        enlace: true,
+        cantidad: true,
+        precioTotal: true,
+        monedaVenta: true,
+        estado: true,
+        creadaEn: true,
+      },
+      orderBy: [{ creadaEn: 'desc' }, { id: 'desc' }],
+      skip: 20,
+      take: 10,
+    });
+    expect(rows).toEqual([
+      {
+        id: dbOrder.id,
+        serviceId: dbOrder.servicioId,
+        target: dbOrder.enlace,
+        quantity: dbOrder.cantidad,
+        totalPrice: {
+          amount: dbOrder.precioTotal,
+          currency: dbOrder.monedaVenta,
+        },
+        status: dbOrder.estado,
+        createdAt: dbOrder.creadaEn,
+      },
+    ]);
+  });
+
+  it('omits the status predicate from findMany/count when no filter is given', async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const count = jest.fn().mockResolvedValue(0);
+    const prisma = {
+      orden: { findMany, count },
+    } as unknown as PrismaService;
+    const repository = new OrderRepository(prisma);
+    await repository.findMany('tenant-1', 'user-1', {}, 0, 20);
+    await repository.count('tenant-1', 'user-1', {});
+    const findManyCall = (findMany.mock.calls as unknown[][])[0]?.[0];
+    const countCall = (count.mock.calls as unknown[][])[0]?.[0];
+    expect(findManyCall).toMatchObject({
+      where: {
+        tiendaId: 'tenant-1',
+        usuarioId: 'user-1',
+      },
+    });
+    expect(countCall).toMatchObject({
+      where: {
+        tiendaId: 'tenant-1',
+        usuarioId: 'user-1',
+      },
+    });
+  });
+
+  it('scopes findById by tenant and user and returns null for a foreign or missing order', async () => {
+    const findFirst = jest.fn().mockResolvedValue(null);
+    const prisma = { orden: { findFirst } } as unknown as PrismaService;
+    const repository = new OrderRepository(prisma);
+    const result = await repository.findById('tenant-1', 'user-1', 'order-1');
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { id: 'order-1', tiendaId: 'tenant-1', usuarioId: 'user-1' },
+      select: {
+        id: true,
+        servicioId: true,
+        enlace: true,
+        cantidad: true,
+        precioTotal: true,
+        monedaVenta: true,
+        estado: true,
+        creadaEn: true,
+      },
+    });
+    expect(result).toBeNull();
   });
 });

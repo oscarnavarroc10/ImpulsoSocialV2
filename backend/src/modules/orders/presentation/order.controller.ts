@@ -2,8 +2,11 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   Headers,
+  Param,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -23,7 +26,12 @@ import {
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
-import { CreateOrderDto, OrderResponseDto } from '../application/dto/order.dto';
+import {
+  CreateOrderDto,
+  OrderListQueryDto,
+  OrderListResponseDto,
+  OrderResponseDto,
+} from '../application/dto/order.dto';
 import { OrderService } from '../application/order.service';
 import { OrderAuthenticationGuard } from '../security/order-authentication.guard';
 import type { OrderRequest } from '../security/order-authentication.guard';
@@ -34,6 +42,34 @@ import type { OrderRequest } from '../security/order-authentication.guard';
 @UseGuards(OrderAuthenticationGuard)
 export class OrderController {
   constructor(private readonly service: OrderService) {}
+
+  @Get()
+  @ApiOperation({ summary: "List the authenticated customer's orders" })
+  @ApiOkResponse({ type: OrderListResponseDto })
+  @ApiBadRequestResponse()
+  @ApiUnauthorizedResponse()
+  async list(
+    @Query() query: OrderListQueryDto,
+    @Req() request: OrderRequest,
+  ): Promise<OrderListResponseDto> {
+    if (!request.principal)
+      throw new BadRequestException('Authentication principal missing');
+    return this.service.list(query, request.principal);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: "Get one of the authenticated customer's orders" })
+  @ApiOkResponse({ type: OrderResponseDto })
+  @ApiUnauthorizedResponse()
+  @ApiNotFoundResponse()
+  async getById(
+    @Param('id') id: string,
+    @Req() request: OrderRequest,
+  ): Promise<OrderResponseDto> {
+    if (!request.principal)
+      throw new BadRequestException('Authentication principal missing');
+    return this.service.getById(id, request.principal);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Place one BulkFollows Default service order' })
