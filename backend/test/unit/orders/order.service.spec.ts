@@ -1,9 +1,12 @@
 import {
+  BadGatewayException,
   ConflictException,
   NotFoundException,
+  ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
+import { EstadoOrden } from '@prisma/client';
 import { OrderService } from '../../../src/modules/orders/application/order.service';
 import {
   InvalidProviderContractError,
@@ -427,6 +430,147 @@ describe('OrderService read flow', () => {
   });
 });
 
+describe('OrderService refresh status flow', () => {
+  const refreshOrder = { ...order, status: 'enviadaProveedor' };
+
+  function setupRefresh() {
+    const findForRefresh = jest.fn().mockResolvedValue({
+      order: refreshOrder,
+      providerOrderId: 'provider-1',
+    });
+    const applyRefresh = jest.fn().mockResolvedValue({
+      ...refreshOrder,
+      status: 'enProgreso',
+    });
+    const repository = {
+      findForRefresh,
+      applyRefresh,
+    } as unknown as OrderRepository;
+    const isReady = jest.fn().mockReturnValue(true);
+    const status = jest.fn().mockResolvedValue({
+      kind: 'ok',
+      externalStatus: ' In progress ',
+      startCount: 3572,
+      remains: 157,
+    });
+    const provider = { isReady, status } as unknown as BulkFollowsOrderClient;
+    return {
+      service: new OrderService(repository, provider),
+      findForRefresh,
+      applyRefresh,
+      isReady,
+      status,
+    };
+  }
+
+  it('scopes lookup, maps the provider status, and applies counters', async () => {
+    const { service, findForRefresh, applyRefresh, status } = setupRefresh();
+    await expect(
+      service.refreshStatus('order-1', principal),
+    ).resolves.toMatchObject({ status: 'enProgreso' });
+    expect(findForRefresh).toHaveBeenCalledWith(
+      'tenant-1',
+      'user-1',
+      'order-1',
+    );
+    expect(status).toHaveBeenCalledWith('provider-1');
+    expect(applyRefresh).toHaveBeenCalledWith('tenant-1', 'user-1', 'order-1', {
+      providerStatus: 'In progress',
+      localStatus: EstadoOrden.enProgreso,
+      startCount: 3572,
+      remains: 157,
+    });
+  });
+
+  it.each([
+    ['Pending', EstadoOrden.enviadaProveedor],
+    ['Processing', EstadoOrden.enProgreso],
+    ['Completed', EstadoOrden.completada],
+    ['Partial', EstadoOrden.parcial],
+    ['Canceled', EstadoOrden.cancelada],
+    ['Cancelled', EstadoOrden.cancelada],
+  ])('maps %s to %s', async (externalStatus, localStatus) => {
+    const { service, status, applyRefresh } = setupRefresh();
+    jest.mocked(status).mockResolvedValue({
+      kind: 'ok',
+      externalStatus,
+      startCount: 1,
+      remains: 0,
+    });
+    await service.refreshStatus('order-1', principal);
+    const applyCalls = applyRefresh.mock.calls as unknown[][];
+    expect(applyCalls[0]?.[3]).toMatchObject({
+      providerStatus: externalStatus,
+      localStatus,
+    });
+  });
+
+  it('returns 404 without contacting the provider for a missing or foreign order', async () => {
+    const { service, findForRefresh, status } = setupRefresh();
+    jest.mocked(findForRefresh).mockResolvedValue(null);
+    await expect(
+      service.refreshStatus('foreign', principal),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(status).not.toHaveBeenCalled();
+  });
+
+  it('short-circuits terminal orders and rejects missing provider IDs', async () => {
+    const terminal = setupRefresh();
+    jest.mocked(terminal.findForRefresh).mockResolvedValue({
+      order: { ...refreshOrder, status: 'completada' },
+      providerOrderId: 'provider-1',
+    });
+    await expect(
+      terminal.service.refreshStatus('order-1', principal),
+    ).resolves.toMatchObject({ status: 'completada' });
+    expect(terminal.status).not.toHaveBeenCalled();
+
+    const missingId = setupRefresh();
+    jest
+      .mocked(missingId.findForRefresh)
+      .mockResolvedValue({ order: refreshOrder, providerOrderId: null });
+    await expect(
+      missingId.service.refreshStatus('order-1', principal),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(missingId.status).not.toHaveBeenCalled();
+
+    const blankId = setupRefresh();
+    jest
+      .mocked(blankId.findForRefresh)
+      .mockResolvedValue({ order: refreshOrder, providerOrderId: '   ' });
+    await expect(
+      blankId.service.refreshStatus('order-1', principal),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(blankId.status).not.toHaveBeenCalled();
+  });
+
+  it('sanitizes unavailable configuration and provider responses', async () => {
+    const unavailable = setupRefresh();
+    jest.mocked(unavailable.isReady).mockReturnValue(false);
+    await expect(
+      unavailable.service.refreshStatus('order-1', principal),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(unavailable.status).not.toHaveBeenCalled();
+
+    const malformed = setupRefresh();
+    jest.mocked(malformed.status).mockResolvedValue({ kind: 'unavailable' });
+    await expect(
+      malformed.service.refreshStatus('order-1', principal),
+    ).rejects.toBeInstanceOf(BadGatewayException);
+
+    const unknown = setupRefresh();
+    jest.mocked(unknown.status).mockResolvedValue({
+      kind: 'ok',
+      externalStatus: 'Unknown',
+      startCount: 1,
+      remains: 0,
+    });
+    await expect(
+      unknown.service.refreshStatus('order-1', principal),
+    ).rejects.toBeInstanceOf(BadGatewayException);
+  });
+});
+
 describe('OrderRepository transactions', () => {
   const dbOrder = {
     id: 'order-1',
@@ -710,5 +854,177 @@ describe('OrderRepository transactions', () => {
       },
     });
     expect(result).toBeNull();
+  });
+
+  it('applies a refresh atomically with scoped state, counters, provider metadata, and one history row', async () => {
+    const current = { ...dbOrder, estado: EstadoOrden.enviadaProveedor };
+    const tx = {
+      orden: {
+        findFirst: jest.fn().mockResolvedValue(current),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest
+          .fn()
+          .mockResolvedValue({ ...current, estado: EstadoOrden.enProgreso }),
+      },
+      ordenProveedor: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      historialOrden: { create: jest.fn() },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (value: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    } as unknown as PrismaService;
+    const repository = new OrderRepository(prisma);
+
+    await repository.applyRefresh('tenant-1', 'user-1', 'order-1', {
+      providerStatus: 'In progress',
+      localStatus: EstadoOrden.enProgreso,
+      startCount: 3572,
+      remains: 157,
+    });
+
+    const findCalls = tx.orden.findFirst.mock.calls as unknown[][];
+    expect(findCalls[0]?.[0]).toMatchObject({
+      where: { id: 'order-1', tiendaId: 'tenant-1', usuarioId: 'user-1' },
+      select: { completadaEn: true, canceladaEn: true },
+    });
+    const updateCalls = tx.orden.updateMany.mock.calls as unknown[][];
+    expect(updateCalls[0]?.[0]).toMatchObject({
+      where: {
+        id: 'order-1',
+        tiendaId: 'tenant-1',
+        usuarioId: 'user-1',
+        estado: EstadoOrden.enviadaProveedor,
+      },
+      data: {
+        estado: EstadoOrden.enProgreso,
+        conteoInicial: 3572,
+        restante: 157,
+      },
+    });
+    const providerCalls = tx.ordenProveedor.updateMany.mock
+      .calls as unknown[][];
+    const providerCall = providerCalls[0]?.[0] as {
+      where?: unknown;
+      data?: { estadoExterno?: unknown; ultimaConsultaEn?: unknown };
+    };
+    expect(providerCall).toMatchObject({
+      where: { ordenId: 'order-1' },
+      data: {
+        estadoExterno: 'In progress',
+      },
+    });
+    expect(providerCall.data?.ultimaConsultaEn).toBeInstanceOf(Date);
+    expect(tx.historialOrden.create).toHaveBeenCalledWith({
+      data: {
+        ordenId: 'order-1',
+        estadoAnterior: EstadoOrden.enviadaProveedor,
+        estadoNuevo: EstadoOrden.enProgreso,
+        origen: 'bulkfollows-status',
+      },
+    });
+  });
+
+  it('short-circuits terminal state and does not duplicate same-state history', async () => {
+    const terminal = { ...dbOrder, estado: EstadoOrden.completada };
+    const sameState = { ...dbOrder, estado: EstadoOrden.enProgreso };
+    const tx = {
+      orden: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(terminal)
+          .mockResolvedValueOnce(sameState),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(sameState),
+      },
+      ordenProveedor: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      historialOrden: { create: jest.fn() },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (value: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    } as unknown as PrismaService;
+    const repository = new OrderRepository(prisma);
+
+    await repository.applyRefresh('tenant-1', 'user-1', 'order-1', {
+      providerStatus: 'In progress',
+      localStatus: EstadoOrden.enProgreso,
+      startCount: 1,
+      remains: 1,
+    });
+    await repository.applyRefresh('tenant-1', 'user-1', 'order-1', {
+      providerStatus: 'Processing',
+      localStatus: EstadoOrden.enProgreso,
+      startCount: 2,
+      remains: 0,
+    });
+
+    expect(tx.orden.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.historialOrden.create).not.toHaveBeenCalled();
+  });
+
+  it('does not apply a backward provider status', async () => {
+    const current = { ...dbOrder, estado: EstadoOrden.enProgreso };
+    const tx = {
+      orden: {
+        findFirst: jest.fn().mockResolvedValue(current),
+        updateMany: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
+      },
+      ordenProveedor: { updateMany: jest.fn() },
+      historialOrden: { create: jest.fn() },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (value: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    } as unknown as PrismaService;
+    const repository = new OrderRepository(prisma);
+
+    await expect(
+      repository.applyRefresh('tenant-1', 'user-1', 'order-1', {
+        providerStatus: 'Pending',
+        localStatus: EstadoOrden.enviadaProveedor,
+        startCount: 1,
+        remains: 10,
+      }),
+    ).resolves.toMatchObject({ status: EstadoOrden.enProgreso });
+
+    expect(tx.orden.updateMany).not.toHaveBeenCalled();
+    expect(tx.ordenProveedor.updateMany).not.toHaveBeenCalled();
+    expect(tx.historialOrden.create).not.toHaveBeenCalled();
+  });
+
+  it('returns the concurrent winner without overwriting metadata or history', async () => {
+    const current = { ...dbOrder, estado: EstadoOrden.enProgreso };
+    const winner = { ...dbOrder, estado: EstadoOrden.parcial };
+    const tx = {
+      orden: {
+        findFirst: jest.fn().mockResolvedValue(current),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(winner),
+      },
+      ordenProveedor: { updateMany: jest.fn() },
+      historialOrden: { create: jest.fn() },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (value: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    } as unknown as PrismaService;
+    const repository = new OrderRepository(prisma);
+
+    await expect(
+      repository.applyRefresh('tenant-1', 'user-1', 'order-1', {
+        providerStatus: 'Completed',
+        localStatus: EstadoOrden.completada,
+        startCount: 1,
+        remains: 0,
+      }),
+    ).resolves.toMatchObject({ status: EstadoOrden.parcial });
+
+    expect(tx.ordenProveedor.updateMany).not.toHaveBeenCalled();
+    expect(tx.historialOrden.create).not.toHaveBeenCalled();
   });
 });

@@ -36,6 +36,29 @@ export interface OrderReplay extends OrderView {
 export interface OrderListFilters {
   status?: EstadoOrden;
 }
+export interface OrderRefreshLookup {
+  order: OrderView;
+  providerOrderId: string | null;
+}
+export interface RefreshResult {
+  providerStatus: string;
+  localStatus: EstadoOrden;
+  startCount: number;
+  remains: number;
+}
+
+// Monotonic progression: enviando/enviadaProveedor -> enProgreso -> terminal.
+const REFRESH_STATE_RANK: Record<EstadoOrden, number> = {
+  [EstadoOrden.pendiente]: 0,
+  [EstadoOrden.enviando]: 0,
+  [EstadoOrden.enviadaProveedor]: 1,
+  [EstadoOrden.enProgreso]: 2,
+  [EstadoOrden.completada]: 3,
+  [EstadoOrden.parcial]: 3,
+  [EstadoOrden.cancelada]: 3,
+  [EstadoOrden.fallida]: 3,
+  [EstadoOrden.reembolsada]: 3,
+};
 
 export class InvalidProviderContractError extends Error {}
 
@@ -190,6 +213,86 @@ export class OrderRepository {
       select: this.viewSelect,
     });
     return row ? this.toView(row) : null;
+  }
+
+  async findForRefresh(
+    tenantId: string,
+    userId: string,
+    id: string,
+  ): Promise<OrderRefreshLookup | null> {
+    const row = await this.prisma.orden.findFirst({
+      where: { id, tiendaId: tenantId, usuarioId: userId },
+      select: {
+        ...this.viewSelect,
+        ordenProveedor: { select: { idExterno: true } },
+      },
+    });
+    if (!row) return null;
+    const { ordenProveedor, ...orderFields } = row;
+    return {
+      order: this.toView(orderFields),
+      providerOrderId: ordenProveedor?.idExterno ?? null,
+    };
+  }
+
+  async applyRefresh(
+    tenantId: string,
+    userId: string,
+    id: string,
+    result: RefreshResult,
+  ): Promise<OrderView | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const current = await tx.orden.findFirst({
+        where: { id, tiendaId: tenantId, usuarioId: userId },
+        select: { ...this.viewSelect, completadaEn: true, canceladaEn: true },
+      });
+      if (!current) return null;
+      const currentRank = REFRESH_STATE_RANK[current.estado];
+      const nextRank = REFRESH_STATE_RANK[result.localStatus];
+      if (currentRank === 3 || nextRank < currentRank)
+        return this.toView(current);
+      const sameState = result.localStatus === current.estado;
+      const now = new Date();
+      const completingNow =
+        result.localStatus === EstadoOrden.completada && !current.completadaEn;
+      const cancelingNow =
+        result.localStatus === EstadoOrden.cancelada && !current.canceladaEn;
+      const changed = await tx.orden.updateMany({
+        where: {
+          id,
+          tiendaId: tenantId,
+          usuarioId: userId,
+          estado: current.estado,
+        },
+        data: {
+          estado: result.localStatus,
+          conteoInicial: result.startCount,
+          restante: result.remains,
+          ...(completingNow ? { completadaEn: now } : {}),
+          ...(cancelingNow ? { canceladaEn: now } : {}),
+        },
+      });
+      if (changed.count === 1) {
+        await tx.ordenProveedor.updateMany({
+          where: { ordenId: id },
+          data: { estadoExterno: result.providerStatus, ultimaConsultaEn: now },
+        });
+        if (!sameState)
+          await tx.historialOrden.create({
+            data: {
+              ordenId: id,
+              estadoAnterior: current.estado,
+              estadoNuevo: result.localStatus,
+              origen: 'bulkfollows-status',
+            },
+          });
+      }
+      const row = await tx.orden.findUniqueOrThrow({
+        where: { id },
+        select: this.viewSelect,
+      });
+      return this.toView(row);
+    });
   }
 
   async createPurchase(

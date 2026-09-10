@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Headers,
+  HttpCode,
   Param,
   Post,
   Query,
@@ -99,5 +100,23 @@ export class OrderController {
         throw new BadRequestException('Invalid Idempotency-Key');
       throw error;
     }
+  }
+
+  @Post(':id/refresh-status')
+  @HttpCode(200)
+  @ApiOperation({ summary: "Refresh one order's BulkFollows status" })
+  @ApiOkResponse({ type: OrderResponseDto })
+  @ApiUnauthorizedResponse()
+  @ApiNotFoundResponse()
+  @ApiConflictResponse({ description: 'Order has no provider reference' })
+  @ApiResponse({ status: 502, description: 'Provider status is unavailable' })
+  @ApiResponse({ status: 503, description: 'Provider is not configured' })
+  async refreshStatus(
+    @Param('id') id: string,
+    @Req() request: OrderRequest,
+  ): Promise<OrderResponseDto> {
+    if (!request.principal)
+      throw new BadRequestException('Authentication principal missing');
+    return this.service.refreshStatus(id, request.principal);
   }
 }
