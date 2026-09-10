@@ -1,6 +1,7 @@
 import {
   BadGatewayException,
   ConflictException,
+  InternalServerErrorException,
   NotFoundException,
   ServiceUnavailableException,
   UnprocessableEntityException,
@@ -10,6 +11,7 @@ import { EstadoOrden } from '@prisma/client';
 import { OrderService } from '../../../src/modules/orders/application/order.service';
 import {
   InvalidProviderContractError,
+  InvalidRefundBasisError,
   OrderRepository,
 } from '../../../src/modules/orders/infrastructure/order.repository';
 import type { PrismaService } from '../../../src/prisma/prisma.service';
@@ -442,9 +444,14 @@ describe('OrderService refresh status flow', () => {
       ...refreshOrder,
       status: 'enProgreso',
     });
+    const refund = jest.fn().mockResolvedValue({
+      order: { ...refreshOrder, status: 'reembolsada' },
+      refunded: true,
+    });
     const repository = {
       findForRefresh,
       applyRefresh,
+      refund,
     } as unknown as OrderRepository;
     const isReady = jest.fn().mockReturnValue(true);
     const status = jest.fn().mockResolvedValue({
@@ -458,6 +465,7 @@ describe('OrderService refresh status flow', () => {
       service: new OrderService(repository, provider),
       findForRefresh,
       applyRefresh,
+      refund,
       isReady,
       status,
     };
@@ -524,6 +532,7 @@ describe('OrderService refresh status flow', () => {
       terminal.service.refreshStatus('order-1', principal),
     ).resolves.toMatchObject({ status: 'completada' });
     expect(terminal.status).not.toHaveBeenCalled();
+    expect(terminal.refund).not.toHaveBeenCalled();
 
     const missingId = setupRefresh();
     jest
@@ -543,6 +552,22 @@ describe('OrderService refresh status flow', () => {
     ).rejects.toBeInstanceOf(ConflictException);
     expect(blankId.status).not.toHaveBeenCalled();
   });
+
+  it.each([EstadoOrden.fallida, EstadoOrden.reembolsada])(
+    'does not contact the provider or refund an order already in %s',
+    async (storedStatus) => {
+      const refresh = setupRefresh();
+      jest.mocked(refresh.findForRefresh).mockResolvedValue({
+        order: { ...refreshOrder, status: storedStatus },
+        providerOrderId: 'provider-1',
+      });
+      await expect(
+        refresh.service.refreshStatus('order-1', principal),
+      ).resolves.toMatchObject({ status: storedStatus });
+      expect(refresh.status).not.toHaveBeenCalled();
+      expect(refresh.refund).not.toHaveBeenCalled();
+    },
+  );
 
   it('sanitizes unavailable configuration and provider responses', async () => {
     const unavailable = setupRefresh();
@@ -568,6 +593,101 @@ describe('OrderService refresh status flow', () => {
     await expect(
       unknown.service.refreshStatus('order-1', principal),
     ).rejects.toBeInstanceOf(BadGatewayException);
+  });
+
+  it('rejects a fresh partial remainder above the order quantity before persistence', async () => {
+    const refresh = setupRefresh();
+    jest.mocked(refresh.status).mockResolvedValue({
+      kind: 'ok',
+      externalStatus: 'Partial',
+      startCount: 1000,
+      remains: 1502,
+    });
+    await expect(
+      refresh.service.refreshStatus('order-1', principal),
+    ).rejects.toBeInstanceOf(BadGatewayException);
+    expect(refresh.applyRefresh).not.toHaveBeenCalled();
+  });
+
+  it.each<EstadoOrden>([EstadoOrden.parcial, EstadoOrden.cancelada])(
+    'recovers a persisted %s order without a provider call',
+    async (storedStatus) => {
+      const refresh = setupRefresh();
+      jest.mocked(refresh.findForRefresh).mockResolvedValue({
+        order: { ...refreshOrder, status: storedStatus },
+        providerOrderId: 'provider-1',
+      });
+      await expect(
+        refresh.service.refreshStatus('order-1', principal),
+      ).resolves.toMatchObject({ status: 'reembolsada' });
+      expect(refresh.refund).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-1',
+        'order-1',
+      );
+      expect(refresh.status).not.toHaveBeenCalled();
+      expect(refresh.applyRefresh).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each<[string, EstadoOrden, number]>([
+    ['Partial', EstadoOrden.parcial, 157],
+    ['Canceled', EstadoOrden.cancelada, 0],
+  ])(
+    'persists a fresh %s before invoking the refund operation',
+    async (externalStatus, localStatus, remains) => {
+      const refresh = setupRefresh();
+      jest.mocked(refresh.status).mockResolvedValue({
+        kind: 'ok',
+        externalStatus,
+        startCount: 1000,
+        remains,
+      });
+      jest.mocked(refresh.applyRefresh).mockResolvedValue({
+        ...refreshOrder,
+        status: localStatus,
+      });
+      await expect(
+        refresh.service.refreshStatus('order-1', principal),
+      ).resolves.toMatchObject({ status: 'reembolsada' });
+      expect(refresh.refund).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-1',
+        'order-1',
+      );
+      expect(refresh.applyRefresh).toHaveBeenCalledWith(
+        'tenant-1',
+        'user-1',
+        'order-1',
+        expect.objectContaining({ localStatus }),
+      );
+    },
+  );
+
+  it('maps refund basis and persistence failures to sanitized errors', async () => {
+    const invalid = setupRefresh();
+    jest.mocked(invalid.findForRefresh).mockResolvedValue({
+      order: { ...refreshOrder, status: EstadoOrden.parcial },
+      providerOrderId: 'provider-1',
+    });
+    jest.mocked(invalid.refund).mockRejectedValue(new InvalidRefundBasisError());
+    await expect(
+      invalid.service.refreshStatus('order-1', principal),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    const failed = setupRefresh();
+    jest.mocked(failed.findForRefresh).mockResolvedValue({
+      order: { ...refreshOrder, status: EstadoOrden.cancelada },
+      providerOrderId: 'provider-1',
+    });
+    jest.mocked(failed.refund).mockRejectedValue(new Error('private detail'));
+    const rejection = failed.service.refreshStatus('order-1', principal);
+    await expect(rejection).rejects.toBeInstanceOf(
+      InternalServerErrorException,
+    );
+    await expect(rejection).rejects.toMatchObject({
+      message: 'Order refund failed',
+    });
   });
 });
 
@@ -1025,6 +1145,278 @@ describe('OrderRepository transactions', () => {
     ).resolves.toMatchObject({ status: EstadoOrden.parcial });
 
     expect(tx.ordenProveedor.updateMany).not.toHaveBeenCalled();
+    expect(tx.historialOrden.create).not.toHaveBeenCalled();
+  });
+
+  it.each<[EstadoOrden, number, number, number | null, number]>([
+    [EstadoOrden.parcial, 15000, 1000, 157, 2355],
+    [EstadoOrden.parcial, 15001, 1000, 1, 15],
+    [EstadoOrden.parcial, 1, 1000, 1, 0],
+    [
+      EstadoOrden.parcial,
+      2_000_000_000,
+      2_000_000_000,
+      1_999_999_999,
+      1_999_999_999,
+    ],
+    [EstadoOrden.cancelada, 15000, 1000, null, 15000],
+  ])(
+    'refunds %s with exact integer amount %s',
+    async (state, total, quantity, remains, amount) => {
+      const current = {
+        ...dbOrder,
+        estado: state,
+        precioTotal: total,
+        cantidad: quantity,
+        restante: remains,
+      };
+      const startingBalance = 100000;
+      const tx = {
+        orden: {
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findUniqueOrThrow: jest
+            .fn()
+            .mockResolvedValue({ ...current, estado: EstadoOrden.reembolsada }),
+        },
+        billetera: {
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findFirstOrThrow: jest.fn().mockResolvedValue({
+            id: 'wallet-1',
+            saldoDisponible: startingBalance + amount,
+          }),
+        },
+        movimientoSaldo: { create: jest.fn() },
+        historialOrden: { create: jest.fn() },
+      };
+      const transaction = jest.fn((callback: (value: typeof tx) => unknown) =>
+        callback(tx),
+      );
+      const prisma = {
+        orden: { findFirst: jest.fn().mockResolvedValue(current) },
+        $transaction: transaction,
+      } as unknown as PrismaService;
+      const result = await new OrderRepository(prisma).refund(
+        'tenant-1',
+        'user-1',
+        'order-1',
+      );
+      if (amount === 0) {
+        expect(result?.order.status).toBe(EstadoOrden.parcial);
+        expect(transaction).not.toHaveBeenCalled();
+        return;
+      }
+      expect(result?.order.status).toBe(EstadoOrden.reembolsada);
+      expect(result?.refunded).toBe(true);
+      expect(tx.orden.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'order-1',
+          tiendaId: 'tenant-1',
+          usuarioId: 'user-1',
+          estado: state,
+        },
+        data: { estado: EstadoOrden.reembolsada },
+      });
+      expect(tx.billetera.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tiendaId: 'tenant-1', usuarioId: 'user-1', moneda: 'MXN' },
+          data: { saldoDisponible: { increment: amount } },
+        }),
+      );
+      expect(tx.movimientoSaldo.create).toHaveBeenCalledWith({
+        data: {
+          billeteraId: 'wallet-1',
+          tipo: 'reembolso',
+          monto: amount,
+          saldoAnterior: startingBalance,
+          saldoPosterior: startingBalance + amount,
+          referencia: 'order-1',
+        },
+      });
+      expect(tx.historialOrden.create).toHaveBeenCalledWith({
+        data: {
+          ordenId: 'order-1',
+          estadoAnterior: state,
+          estadoNuevo: EstadoOrden.reembolsada,
+          origen: 'orders-refund',
+        },
+      });
+    },
+  );
+
+  it('does not write a zero refund and rejects invalid persisted basis', async () => {
+    const zero = {
+      ...dbOrder,
+      estado: EstadoOrden.parcial,
+      restante: 1,
+      precioTotal: 1,
+    };
+    const findFirst = jest.fn().mockResolvedValue(zero);
+    const transaction = jest.fn();
+    const prisma = {
+      orden: { findFirst },
+      $transaction: transaction,
+    } as unknown as PrismaService;
+    const repository = new OrderRepository(prisma);
+    await expect(
+      repository.refund('tenant-1', 'user-1', 'order-1'),
+    ).resolves.toMatchObject({ refunded: false });
+    expect(transaction).not.toHaveBeenCalled();
+
+    findFirst.mockResolvedValue({ ...zero, restante: 1001 });
+    await expect(
+      repository.refund('tenant-1', 'user-1', 'order-1'),
+    ).rejects.toBeInstanceOf(InvalidRefundBasisError);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it.each<[number | null, number]>([
+    [null, 1000],
+    [-1, 1000],
+    [1001, 1000],
+  ])(
+    'rejects invalid partial remaining %s for quantity %s',
+    async (remains, quantity) => {
+      const current = {
+        ...dbOrder,
+        estado: EstadoOrden.parcial,
+        restante: remains,
+        cantidad: quantity,
+      };
+      const transaction = jest.fn();
+      const prisma = {
+        orden: { findFirst: jest.fn().mockResolvedValue(current) },
+        $transaction: transaction,
+      } as unknown as PrismaService;
+      await expect(
+        new OrderRepository(prisma).refund(
+          'tenant-1',
+          'user-1',
+          'order-1',
+        ),
+      ).rejects.toBeInstanceOf(InvalidRefundBasisError);
+      expect(transaction).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each<EstadoOrden>([
+    EstadoOrden.pendiente,
+    EstadoOrden.enviando,
+    EstadoOrden.enviadaProveedor,
+    EstadoOrden.enProgreso,
+    EstadoOrden.completada,
+    EstadoOrden.fallida,
+    EstadoOrden.reembolsada,
+  ])('never refunds the non-refundable state %s', async (state) => {
+    const current = { ...dbOrder, estado: state, restante: 157 };
+    const transaction = jest.fn();
+    const prisma = {
+      orden: { findFirst: jest.fn().mockResolvedValue(current) },
+      $transaction: transaction,
+    } as unknown as PrismaService;
+    await expect(
+      new OrderRepository(prisma).refund(
+        'tenant-1',
+        'user-1',
+        'order-1',
+      ),
+    ).resolves.toMatchObject({ refunded: false });
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it('returns null for a missing scoped order without writes', async () => {
+    const transaction = jest.fn();
+    const findFirst = jest.fn().mockResolvedValue(null);
+    const prisma = {
+      orden: { findFirst },
+      $transaction: transaction,
+    } as unknown as PrismaService;
+    await expect(
+      new OrderRepository(prisma).refund(
+        'tenant-1',
+        'user-1',
+        'missing',
+      ),
+    ).resolves.toBeNull();
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'missing',
+          tiendaId: 'tenant-1',
+          usuarioId: 'user-1',
+        },
+      }),
+    );
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it('uses the conditional scoped claim to prevent a second refund', async () => {
+    const current = { ...dbOrder, estado: EstadoOrden.parcial, restante: 157 };
+    const winner = { ...current, estado: EstadoOrden.reembolsada };
+    const updateMany = jest.fn().mockResolvedValue({ count: 0 });
+    const findFirst = jest
+      .fn()
+      .mockResolvedValueOnce(current)
+      .mockResolvedValueOnce(winner);
+    const walletUpdate = jest.fn();
+    const movementCreate = jest.fn();
+    const historyCreate = jest.fn();
+    const tx = {
+      orden: { updateMany },
+      billetera: { updateMany: walletUpdate },
+      movimientoSaldo: { create: movementCreate },
+      historialOrden: { create: historyCreate },
+    };
+    const transaction = jest.fn((callback: (value: typeof tx) => unknown) =>
+      callback(tx),
+    );
+    const prisma = {
+      orden: { findFirst },
+      $transaction: transaction,
+    } as unknown as PrismaService;
+    const result = await new OrderRepository(prisma).refund(
+      'tenant-1',
+      'user-1',
+      'order-1',
+    );
+    expect(result?.refunded).toBe(false);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'order-1',
+        tiendaId: 'tenant-1',
+        usuarioId: 'user-1',
+        estado: EstadoOrden.parcial,
+      },
+      data: { estado: EstadoOrden.reembolsada },
+    });
+    expect(findFirst).toHaveBeenCalledTimes(2);
+    expect(result?.order.status).toBe(EstadoOrden.reembolsada);
+    expect(walletUpdate).not.toHaveBeenCalled();
+    expect(movementCreate).not.toHaveBeenCalled();
+    expect(historyCreate).not.toHaveBeenCalled();
+  });
+
+  it('fails closed before audit writes when the matching wallet is missing', async () => {
+    const current = { ...dbOrder, estado: EstadoOrden.cancelada, restante: 0 };
+    const tx = {
+      orden: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      billetera: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      movimientoSaldo: { create: jest.fn() },
+      historialOrden: { create: jest.fn() },
+    };
+    const prisma = {
+      orden: { findFirst: jest.fn().mockResolvedValue(current) },
+      $transaction: jest.fn((callback: (value: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    } as unknown as PrismaService;
+    await expect(
+      new OrderRepository(prisma).refund(
+        'tenant-1',
+        'user-1',
+        'order-1',
+      ),
+    ).rejects.toThrow('REFUND_WALLET_NOT_FOUND');
+    expect(tx.movimientoSaldo.create).not.toHaveBeenCalled();
     expect(tx.historialOrden.create).not.toHaveBeenCalled();
   });
 });
