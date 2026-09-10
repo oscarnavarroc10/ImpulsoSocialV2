@@ -103,6 +103,7 @@ describe('OrderController GET routes (contract)', () => {
     create: jest.fn(),
     list: jest.fn(),
     getById: jest.fn(),
+    refreshStatus: jest.fn(),
   };
   const principal = { userId: 'user-1', tenantId: 'tenant-1', role: 'cliente' };
   const sampleOrder = {
@@ -230,6 +231,21 @@ describe('OrderController GET routes (contract)', () => {
       .expect(404);
   });
 
+  it('refreshes status through the authenticated principal and returns the safe response', async () => {
+    orderService.refreshStatus.mockResolvedValue(sampleOrder);
+
+    const response = await request(app.getHttpServer())
+      .post('/v1/orders/order-1/refresh-status')
+      .expect(200);
+
+    expect(orderService.refreshStatus).toHaveBeenCalledWith(
+      'order-1',
+      principal,
+    );
+    expect(Object.keys(response.body as object).sort()).toEqual(safeKeys);
+    assertNoForbiddenKeys(response.body);
+  });
+
   it('never triggers order creation for list/detail requests', async () => {
     orderService.list.mockResolvedValue({
       items: [],
@@ -262,6 +278,14 @@ describe('OrderController GET routes (contract)', () => {
     expect(detailOperation?.responses['200']).toBeDefined();
     expect(detailOperation?.responses['401']).toBeDefined();
     expect(detailOperation?.responses['404']).toBeDefined();
+    const refreshOperation =
+      document.paths['/v1/orders/{id}/refresh-status']?.post;
+    expect(refreshOperation?.responses['200']).toBeDefined();
+    expect(refreshOperation?.responses['401']).toBeDefined();
+    expect(refreshOperation?.responses['404']).toBeDefined();
+    expect(refreshOperation?.responses['409']).toBeDefined();
+    expect(refreshOperation?.responses['502']).toBeDefined();
+    expect(refreshOperation?.responses['503']).toBeDefined();
     expect(listOperation?.security ?? document.security).toEqual(
       expect.anything(),
     );

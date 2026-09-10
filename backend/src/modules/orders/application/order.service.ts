@@ -1,11 +1,14 @@
 import {
+  BadGatewayException,
   ConflictException,
   NotFoundException,
+  ServiceUnavailableException,
   UnprocessableEntityException,
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
+import { EstadoOrden } from '@prisma/client';
 import {
   CreateOrderDto,
   OrderListQueryDto,
@@ -24,6 +27,22 @@ import { BulkFollowsOrderClient } from '../infrastructure/bulkfollows-order.clie
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
+const TERMINAL_STATES = new Set<string>([
+  EstadoOrden.completada,
+  EstadoOrden.parcial,
+  EstadoOrden.cancelada,
+  EstadoOrden.fallida,
+  EstadoOrden.reembolsada,
+]);
+const PROVIDER_STATUS_MAP: Record<string, EstadoOrden> = {
+  pending: EstadoOrden.enviadaProveedor,
+  processing: EstadoOrden.enProgreso,
+  'in progress': EstadoOrden.enProgreso,
+  completed: EstadoOrden.completada,
+  partial: EstadoOrden.parcial,
+  canceled: EstadoOrden.cancelada,
+  cancelled: EstadoOrden.cancelada,
+};
 
 @Injectable()
 export class OrderService {
@@ -67,6 +86,44 @@ export class OrderService {
     );
     if (!order) throw new NotFoundException('Order not found');
     return order;
+  }
+
+  async refreshStatus(
+    id: string,
+    principal: OrderPrincipal,
+  ): Promise<OrderResponseDto> {
+    const lookup = await this.repository.findForRefresh(
+      principal.tenantId,
+      principal.userId,
+      id,
+    );
+    if (!lookup) throw new NotFoundException('Order not found');
+    if (TERMINAL_STATES.has(lookup.order.status)) return lookup.order;
+    const providerOrderId = lookup.providerOrderId?.trim();
+    if (!providerOrderId)
+      throw new ConflictException('Order has no provider reference');
+    if (!this.provider.isReady())
+      throw new ServiceUnavailableException('Provider is not configured');
+    const result = await this.provider.status(providerOrderId);
+    if (result.kind !== 'ok')
+      throw new BadGatewayException('Provider status is unavailable');
+    const mapped =
+      PROVIDER_STATUS_MAP[result.externalStatus.trim().toLowerCase()];
+    if (!mapped)
+      throw new BadGatewayException('Provider status is unavailable');
+    const updated = await this.repository.applyRefresh(
+      principal.tenantId,
+      principal.userId,
+      id,
+      {
+        providerStatus: result.externalStatus.trim(),
+        localStatus: mapped,
+        startCount: result.startCount,
+        remains: result.remains,
+      },
+    );
+    if (!updated) throw new NotFoundException('Order not found');
+    return updated;
   }
 
   async create(

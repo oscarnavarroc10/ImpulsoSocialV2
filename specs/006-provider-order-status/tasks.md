@@ -3,28 +3,28 @@
 **Scope**: Implement only T001–T004. Do not execute Spec Kit commands or begin
 refunds, scheduled polling, refill, cancellation, or another feature.
 
-- [ ] **T001 — Safe status client**: Extend the existing BulkFollows order
+- [x] **T001 — Safe status client**: Extend the existing BulkFollows order
   client with one fake-transport-testable `action=status` form POST using the
   private provider order ID; reuse the whole-response timeout; validate and
   sanitize the documented response; never retry or expose/persist secrets,
   provider errors, raw bodies, `charge`, or provider `currency` —
   `bulkfollows-order.client.ts`
 
-- [ ] **T002 — Scoped monotonic persistence**: Add tenant/user-scoped internal
+- [x] **T002 — Scoped monotonic persistence**: Add tenant/user-scoped internal
   refresh lookup and an atomic apply method that persists valid counters,
   private external status, last-query time, terminal timestamps, and exactly
   one history row per actual state transition; prevent stale/backward updates
   and make repeated/concurrent identical results idempotent —
   `order.repository.ts`
 
-- [ ] **T003 — Authenticated manual refresh**: Add
+- [x] **T003 — Authenticated manual refresh**: Add
   `OrderService.refreshStatus()` and guarded
   `POST /v1/orders/:id/refresh-status`; implement terminal short-circuit,
   uniform 404, missing-provider-ID 409, configuration 503, sanitized provider
   502, official status mapping, safe response reuse, and complete Swagger
   documentation — `order.service.ts`, `order.controller.ts`
 
-- [ ] **T004 — Focused proof and validation**: Extend only the three existing
+- [x] **T004 — Focused proof and validation**: Extend only the three existing
   orders suites to prove exact provider contract, timeout and sanitization,
   tenant/user isolation, every status mapping, monotonic concurrency,
   exactly-once history, timestamps/counters, terminal no-op, zero money writes,
