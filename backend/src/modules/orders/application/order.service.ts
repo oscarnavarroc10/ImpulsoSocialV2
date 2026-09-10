@@ -17,6 +17,7 @@ import {
 } from './dto/order.dto';
 import { OrderPrincipal } from '../security/order-authentication.guard';
 import {
+  InvalidRefundBasisError,
   InvalidProviderContractError,
   OrderRepository,
   OrderReplay,
@@ -98,6 +99,11 @@ export class OrderService {
       id,
     );
     if (!lookup) throw new NotFoundException('Order not found');
+    if (
+      lookup.order.status === EstadoOrden.parcial ||
+      lookup.order.status === EstadoOrden.cancelada
+    )
+      return this.refund(principal, id);
     if (TERMINAL_STATES.has(lookup.order.status)) return lookup.order;
     const providerOrderId = lookup.providerOrderId?.trim();
     if (!providerOrderId)
@@ -111,6 +117,13 @@ export class OrderService {
       PROVIDER_STATUS_MAP[result.externalStatus.trim().toLowerCase()];
     if (!mapped)
       throw new BadGatewayException('Provider status is unavailable');
+    if (
+      mapped === EstadoOrden.parcial &&
+      (!Number.isSafeInteger(result.remains) ||
+        result.remains < 0 ||
+        result.remains > lookup.order.quantity)
+    )
+      throw new BadGatewayException('Provider status is unavailable');
     const updated = await this.repository.applyRefresh(
       principal.tenantId,
       principal.userId,
@@ -123,7 +136,32 @@ export class OrderService {
       },
     );
     if (!updated) throw new NotFoundException('Order not found');
+    if (
+      updated.status === EstadoOrden.parcial ||
+      updated.status === EstadoOrden.cancelada
+    )
+      return this.refund(principal, id);
     return updated;
+  }
+
+  private async refund(
+    principal: OrderPrincipal,
+    id: string,
+  ): Promise<OrderResponseDto> {
+    try {
+      const result = await this.repository.refund(
+        principal.tenantId,
+        principal.userId,
+        id,
+      );
+      if (!result) throw new NotFoundException('Order not found');
+      return result.order;
+    } catch (error: unknown) {
+      if (error instanceof InvalidRefundBasisError)
+        throw new ConflictException('Order refund basis is invalid');
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Order refund failed');
+    }
   }
 
   async create(

@@ -3,19 +3,19 @@
 **Scope**: Implement only T001–T004. Do not execute Spec Kit commands or begin
 wallet/deposit APIs, payments, refill, cancellation, polling, or another feature.
 
-- [ ] **T001 — Exact refund policy**: Add an integer/`BigInt` refund calculation
+- [x] **T001 — Exact refund policy**: Add an integer/`BigInt` refund calculation
   and tenant/user-scoped refundable-order lookup; canceled returns the complete
   selling total, partial returns
   `floor(precioTotal * restante / cantidad)`, invalid basis fails closed, and a
   zero amount performs no write — `order.repository.ts`
 
-- [ ] **T002 — Atomic exactly-once credit**: Add one recoverable refund
+- [x] **T002 — Atomic exactly-once credit**: Add one recoverable refund
   operation whose conditional `parcial|cancelada -> reembolsada` transition is
   the concurrency claim; atomically increment the matching wallet, create one
   exact `MovimientoSaldo.reembolso`, and create one `orders-refund` history row;
   losers/retries write nothing and reload safely — `order.repository.ts`
 
-- [ ] **T003 — Refresh orchestration and recovery**: Extend
+- [x] **T003 — Refresh orchestration and recovery**: Extend
   `OrderService.refreshStatus()` so persisted partial/canceled orders refund
   without contacting BulkFollows, fresh partial/canceled results refund after
   status persistence, invalid fresh partial remaining returns sanitized 502,
@@ -23,7 +23,7 @@ wallet/deposit APIs, payments, refill, cancellation, polling, or another feature
   provider contract, terminal behavior, and safe response remains unchanged —
   `order.service.ts`
 
-- [ ] **T004 — Focused proof and validation**: Extend only the existing order
+- [x] **T004 — Focused proof and validation**: Extend only the existing order
   service/repository spec with exact formulas, full/partial/zero/invalid cases,
   recovery, rollback, tenant/user isolation, sequential and concurrent
   exactly-once behavior, one movement/history, unchanged provider rejection,

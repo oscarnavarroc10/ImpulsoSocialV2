@@ -46,6 +46,10 @@ export interface RefreshResult {
   startCount: number;
   remains: number;
 }
+export interface RefundResult {
+  order: OrderView;
+  refunded: boolean;
+}
 
 // Monotonic progression: enviando/enviadaProveedor -> enProgreso -> terminal.
 const REFRESH_STATE_RANK: Record<EstadoOrden, number> = {
@@ -61,6 +65,7 @@ const REFRESH_STATE_RANK: Record<EstadoOrden, number> = {
 };
 
 export class InvalidProviderContractError extends Error {}
+export class InvalidRefundBasisError extends Error {}
 
 @Injectable()
 export class OrderRepository {
@@ -295,6 +300,91 @@ export class OrderRepository {
     });
   }
 
+  async refund(
+    tenantId: string,
+    userId: string,
+    id: string,
+  ): Promise<RefundResult | null> {
+    const current = await this.prisma.orden.findFirst({
+      where: { id, tiendaId: tenantId, usuarioId: userId },
+      select: {
+        ...this.viewSelect,
+        restante: true,
+      },
+    });
+    if (!current) return null;
+    if (
+      current.estado !== EstadoOrden.parcial &&
+      current.estado !== EstadoOrden.cancelada
+    )
+      return { order: this.toView(current), refunded: false };
+
+    const amount = this.refundAmount(current);
+    if (amount === 0) return { order: this.toView(current), refunded: false };
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.orden.updateMany({
+        where: {
+          id,
+          tiendaId: tenantId,
+          usuarioId: userId,
+          estado: current.estado,
+        },
+        data: { estado: EstadoOrden.reembolsada },
+      });
+      if (claimed.count !== 1) return null;
+
+      const wallet = await tx.billetera.updateMany({
+        where: {
+          tiendaId: tenantId,
+          usuarioId: userId,
+          moneda: current.monedaVenta,
+        },
+        data: { saldoDisponible: { increment: amount } },
+      });
+      if (wallet.count !== 1) throw new Error('REFUND_WALLET_NOT_FOUND');
+      const balance = await tx.billetera.findFirstOrThrow({
+        where: {
+          tiendaId: tenantId,
+          usuarioId: userId,
+          moneda: current.monedaVenta,
+        },
+        select: { id: true, saldoDisponible: true },
+      });
+      await tx.movimientoSaldo.create({
+        data: {
+          billeteraId: balance.id,
+          tipo: TipoMovimientoSaldo.reembolso,
+          monto: amount,
+          saldoAnterior: balance.saldoDisponible - amount,
+          saldoPosterior: balance.saldoDisponible,
+          referencia: id,
+        },
+      });
+      await tx.historialOrden.create({
+        data: {
+          ordenId: id,
+          estadoAnterior: current.estado,
+          estadoNuevo: EstadoOrden.reembolsada,
+          origen: 'orders-refund',
+        },
+      });
+      const row = await tx.orden.findUniqueOrThrow({
+        where: { id },
+        select: this.viewSelect,
+      });
+      return { order: this.toView(row), refunded: true };
+    });
+    if (result) return result;
+    const winner = await this.prisma.orden.findFirst({
+      where: { id, tiendaId: tenantId, usuarioId: userId },
+      select: this.viewSelect,
+    });
+    return winner
+      ? { order: this.toView(winner), refunded: false }
+      : null;
+  }
+
   async createPurchase(
     input: PurchaseInput,
     candidate: PurchaseCandidate,
@@ -518,6 +608,32 @@ export class OrderRepository {
     if (result < 1n || result > 2147483647n)
       throw new Error('UNREPRESENTABLE_TOTAL');
     return Number(result);
+  }
+  private refundAmount(order: {
+    estado: EstadoOrden;
+    cantidad: number;
+    precioTotal: number;
+    restante: number | null;
+  }): number {
+    if (
+      !Number.isSafeInteger(order.cantidad) ||
+      order.cantidad <= 0 ||
+      !Number.isSafeInteger(order.precioTotal) ||
+      order.precioTotal < 0
+    )
+      throw new InvalidRefundBasisError();
+    if (order.estado === EstadoOrden.cancelada) return order.precioTotal;
+    if (
+      order.restante === null ||
+      !Number.isSafeInteger(order.restante) ||
+      order.restante < 0 ||
+      order.restante > order.cantidad
+    )
+      throw new InvalidRefundBasisError();
+    const amount =
+      (BigInt(order.precioTotal) * BigInt(order.restante)) /
+      BigInt(order.cantidad);
+    return Number(amount);
   }
   total(rate: number, quantity: number): number {
     return this.calculate(rate, quantity);
