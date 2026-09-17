@@ -293,6 +293,7 @@ model Deposito {
   tienda    Tienda    @relation(fields: [tiendaId], references: [id], onDelete: Restrict)
   billetera Billetera @relation(fields: [billeteraId], references: [id], onDelete: Restrict)
 
+  @@unique([tiendaId, proveedorPago, referenciaExterna], map: "depositos_tienda_proveedor_referencia_key")
   @@index([tiendaId, estado])
   @@index([billeteraId, creadoEn])
   @@index([proveedorPago, referenciaExterna])
