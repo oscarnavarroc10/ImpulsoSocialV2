@@ -7,6 +7,7 @@ import { CatalogModule } from './modules/catalog';
 import { AuthModule } from './modules/auth';
 import { OrdersModule } from './modules/orders/orders.module';
 import { WalletsModule } from './modules/wallets/wallets.module';
+import { DepositsModule } from './modules/deposits/deposits.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { WalletsModule } from './modules/wallets/wallets.module';
     AuthModule,
     OrdersModule,
     WalletsModule,
+    DepositsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
