@@ -179,18 +179,29 @@ describe('DepositController routes and DTO contract', () => {
     expect(errors.length).toBeGreaterThan(0);
   });
 
-  it('normalizes valid create input and optional empty receipt', async () => {
+  it('normalizes valid create input and accepts an HTTPS receipt', async () => {
     const dto = plainToInstance(CreateDepositDto, {
       amount: '500',
       method: 'transferencia',
       paymentReference: ' REF-1 ',
-      receiptUrl: ' ',
+      receiptUrl: ' https://example.com/receipt.jpg ',
     });
     expect(await validate(dto)).toHaveLength(0);
     expect(dto.amount).toBe(500);
     expect(dto.paymentReference).toBe('REF-1');
-    expect(dto.receiptUrl).toBeUndefined();
+    expect(dto.receiptUrl).toBe('https://example.com/receipt.jpg');
     expect(DepositMethod.criptomoneda).toBe('criptomoneda');
+  });
+
+  it('normalizes an empty optional receipt to undefined', async () => {
+    const dto = plainToInstance(CreateDepositDto, {
+      amount: 500,
+      method: 'criptomoneda',
+      paymentReference: 'CRYPTO-1',
+      receiptUrl: ' ',
+    });
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.receiptUrl).toBeUndefined();
   });
 
   it.each([

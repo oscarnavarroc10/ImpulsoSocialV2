@@ -18,7 +18,7 @@ feature.
 
 ## Phase 1 — Persistence gate
 
-- [ ] **T001 — Unique payment-evidence migration**: Run the exact duplicate
+- [x] **T001 — Unique payment-evidence migration**: Run the exact duplicate
   preflight query from `plan.md`; if it returns zero rows, add only the named
   `Deposito` unique constraint, generate one additive migration containing only
   the expected `CREATE UNIQUE INDEX`, and run Prisma format/validate/generate —
@@ -35,7 +35,7 @@ feature.
 
 ## Phase 2 — Isolated module and current authentication
 
-- [ ] **T002 — Deposits module and guard**: Create the isolated module, add only
+- [x] **T002 — Deposits module and guard**: Create the isolated module, add only
   `DepositsModule` to `AppModule`, and implement the deposits-local guard that
   validates bearer access token, persisted session/user/tenant, active states,
   tenant match, and current persisted role exactly as specified —
@@ -53,13 +53,13 @@ feature.
 
 ## Phase 3 — Customer request and read lifecycle
 
-- [ ] **T003 — Exact DTOs and safe mappers**: Implement only the request/query/
+- [x] **T003 — Exact DTOs and safe mappers**: Implement only the request/query/
   response DTOs defined in `plan.md`, including manual-method allow-list,
   integer bounds, trimmed reference/reason, HTTPS-only optional receipt,
   pagination, Swagger properties, and explicit public/admin response shapes —
   `backend/src/modules/deposits/application/dto/deposit.dto.ts`
 
-- [ ] **T004 — Idempotent creation and customer reads**: Implement deterministic
+- [x] **T004 — Idempotent creation and customer reads**: Implement deterministic
   deposit ID/fingerprint, active tenant/user/canonical-wallet resolution,
   first-create/replay/conflict behavior, duplicate-evidence protection,
   P2002 classification, safe own list/detail pagination, and zero monetary side
@@ -82,14 +82,14 @@ feature.
 
 ## Phase 4 — State transitions and money
 
-- [ ] **T005 — Customer cancellation and admin rejection**: Implement owned
+- [x] **T005 — Customer cancellation and admin rejection**: Implement owned
   pending cancellation plus same-tenant admin pending rejection, including
   idempotent same-result replay, different-reason/terminal-state conflicts,
   zero-count race reload, and zero wallet/movement effects —
   `backend/src/modules/deposits/application/deposit.service.ts`,
   `backend/src/modules/deposits/infrastructure/deposit.repository.ts`
 
-- [ ] **T006 — Exactly-once approval**: Implement admin-role-first authorization,
+- [x] **T006 — Exactly-once approval**: Implement admin-role-first authorization,
   approved invariant replay, and the exact one-transaction deposit claim +
   conditional wallet increment + deterministic deposit movement. Handle
   `P2034`, state/wallet races, overflow, missing/foreign resources, and unknown
@@ -116,7 +116,7 @@ feature.
 
 ## Phase 5 — HTTP contract
 
-- [ ] **T007 — Customer/admin controllers and Swagger**: Add exactly the eight
+- [x] **T007 — Customer/admin controllers and Swagger**: Add exactly the eight
   routes from `plan.md`, apply guard/bearer metadata to both controllers,
   require the idempotency header on create, select HTTP 201/200 from service,
   delegate exact queries/principals, and document exact schemas/statuses —
@@ -134,7 +134,7 @@ feature.
 
 ## Phase 6 — Mandatory focused proof
 
-- [ ] **T008 — Three complete focused suites**: Implement the exact three suites
+- [x] **T008 — Three complete focused suites**: Implement the exact three suites
   and every mandatory behavior listed in the testing section of `plan.md`.
   Keep production tests typed, use deterministic dates/hashes, and do not hide
   lint errors with file-wide `eslint-disable` additions beyond the existing
@@ -155,7 +155,7 @@ feature.
 
 ## Phase 7 — Validation and stop
 
-- [ ] **T009 — Full validation and final report**: Run every command from the
+- [x] **T009 — Full validation and final report**: Run every command from the
   Validation section of `plan.md`, confirm only the exact allowed files changed,
   confirm the 21-suite/283-test baseline plus at least 3 suites/45 tests passes,
   mark T001–T009 `[x]` only after success, report exact results, and stop —

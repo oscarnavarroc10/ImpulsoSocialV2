@@ -56,7 +56,7 @@ export class CreateDepositDto {
   @Transform(trimReceipt)
   @IsOptional()
   @IsString()
-  @IsUrl({ protocols: ['https:'], require_protocol: true })
+  @IsUrl({ protocols: ['https'], require_protocol: true })
   @MaxLength(2048)
   receiptUrl?: string;
 }

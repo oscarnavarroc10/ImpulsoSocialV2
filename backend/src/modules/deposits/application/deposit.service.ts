@@ -455,12 +455,15 @@ export class DepositService {
   }
 
   private toPublic(item: DepositRecord): DepositResponseDto {
+    const method = this.publicMethod(item);
+    if (!item.reference)
+      throw new InternalServerErrorException('Deposit data invalid');
     return {
       id: item.id,
       amount: { amount: item.amount, currency: item.currency },
-      method: item.method as unknown as DepositMethod,
+      method,
       status: item.status,
-      paymentReference: item.reference ?? '',
+      paymentReference: item.reference,
       receiptUrl: item.receiptUrl,
       rejectionReason: item.rejectionReason,
       approvedAt: item.approvedAt,
@@ -471,14 +474,26 @@ export class DepositService {
   }
 
   private toAdmin(item: DepositRecord): AdminDepositResponseDto {
+    if (!item.customer)
+      throw new InternalServerErrorException('Deposit data invalid');
     return {
       ...this.toPublic(item),
-      customer: item.customer ?? {
-        id: item.userId,
-        name: '',
-        email: '',
-      },
+      customer: item.customer,
     };
+  }
+
+  private publicMethod(item: DepositRecord): DepositMethod {
+    if (
+      item.method === 'transferencia' &&
+      item.provider === 'manual-transfer'
+    )
+      return DepositMethod.transferencia;
+    if (
+      item.method === 'criptomoneda' &&
+      item.provider === 'manual-crypto'
+    )
+      return DepositMethod.criptomoneda;
+    throw new InternalServerErrorException('Deposit data invalid');
   }
 
   private isPrismaError(error: unknown, code: string): boolean {

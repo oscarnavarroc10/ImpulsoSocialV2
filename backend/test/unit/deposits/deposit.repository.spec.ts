@@ -135,8 +135,19 @@ describe('DepositRepository scoped reads', () => {
     expect(args).toMatchObject({
       where: {
         tiendaId: 'tenant-1',
+        moneda: 'MXN',
         estado: EstadoDeposito.pendiente,
         metodo: DepositMethod.transferencia,
+        OR: [
+          {
+            metodo: DepositMethod.transferencia,
+            proveedorPago: 'manual-transfer',
+          },
+          {
+            metodo: DepositMethod.criptomoneda,
+            proveedorPago: 'manual-crypto',
+          },
+        ],
         billetera: {
           is: { tiendaId: 'tenant-1', usuarioId: 'user-1', moneda: 'MXN' },
         },
@@ -161,8 +172,19 @@ describe('DepositRepository scoped reads', () => {
       firstArgs(prisma.deposito.count).where as Record<string, unknown>,
     ).toMatchObject({
       tiendaId: 'tenant-1',
+      moneda: 'MXN',
       estado: EstadoDeposito.rechazado,
       metodo: DepositMethod.criptomoneda,
+      OR: [
+        {
+          metodo: DepositMethod.transferencia,
+          proveedorPago: 'manual-transfer',
+        },
+        {
+          metodo: DepositMethod.criptomoneda,
+          proveedorPago: 'manual-crypto',
+        },
+      ],
       billetera: {
         is: { tiendaId: 'tenant-1', moneda: 'MXN', usuarioId: 'user-1' },
       },
@@ -289,8 +311,21 @@ describe('DepositRepository writes and approval transaction', () => {
     );
     const approvalArgs = firstArgs(tx.deposito.findFirst);
     const approvalWhere = approvalArgs.where as {
+      moneda: string;
+      OR: unknown;
       billetera: { is: { usuario: { is: unknown } } };
     };
+    expect(approvalWhere.moneda).toBe('MXN');
+    expect(approvalWhere.OR).toEqual([
+      {
+        metodo: DepositMethod.transferencia,
+        proveedorPago: 'manual-transfer',
+      },
+      {
+        metodo: DepositMethod.criptomoneda,
+        proveedorPago: 'manual-crypto',
+      },
+    ]);
     expect(approvalWhere.billetera.is.usuario.is).toEqual({
       tiendaId: 'tenant-1',
       estado: 'activo',

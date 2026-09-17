@@ -502,6 +502,28 @@ describe('DepositService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it('maps an unclassified P2002 creation failure to a generic 500', async () => {
+    const repository = repositoryMock();
+    repository.createPending.mockRejectedValue({
+      code: 'P2002',
+      message: 'private database detail',
+    });
+    await expect(
+      new DepositService(repository).create(
+        {
+          amount: 500,
+          method: DepositMethod.transferencia,
+          paymentReference: 'abc',
+        },
+        'key-1234',
+        customer,
+      ),
+    ).rejects.toMatchObject({
+      status: 500,
+      message: 'Deposit creation failed',
+    });
+  });
+
   it('lists safely with tenant owner currency filters and empty pagination', async () => {
     const repository = repositoryMock();
     repository.listOwn.mockResolvedValue([]);
@@ -534,6 +556,21 @@ describe('DepositService', () => {
     await expect(
       new DepositService(repository).getById('foreign', customer),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it.each([
+    [{ method: 'tarjeta', provider: 'card' }, 'unsupported method'],
+    [
+      { method: DepositMethod.transferencia, provider: 'wrong-provider' },
+      'mismatched provider',
+    ],
+    [{ reference: null }, 'missing payment reference'],
+  ])('fails closed when a repository row has %s', async (override) => {
+    const repository = repositoryMock();
+    repository.listOwn.mockResolvedValue([{ ...base, ...override } as never]);
+    await expect(
+      new DepositService(repository).list({}, customer),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
   });
 
   it.each([
@@ -601,10 +638,23 @@ describe('DepositService', () => {
     expect(repository.approve).not.toHaveBeenCalled();
   });
 
+  it('returns a valid approved replay without a second write', async () => {
+    const repository = repositoryMock();
+    repository.findAdminById.mockResolvedValue({
+      ...base,
+      status: EstadoDeposito.aprobado,
+    });
+    await expect(
+      new DepositService(repository).approve(base.id, admin),
+    ).resolves.toMatchObject({ status: EstadoDeposito.aprobado });
+    expect(repository.approve).not.toHaveBeenCalled();
+  });
+
   it.each([
     [new DepositBalanceOverflowError(), UnprocessableEntityException],
     [new DepositWalletRaceError(), ConflictException],
     [new DepositDecisionRaceError(), ConflictException],
+    [{ code: 'P2034' }, ConflictException],
     [new Error('private database detail'), InternalServerErrorException],
   ])(
     'maps approval failure %s without exposing details',

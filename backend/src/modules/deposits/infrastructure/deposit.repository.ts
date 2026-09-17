@@ -89,6 +89,19 @@ export class DepositDecisionRaceError extends Error {}
 export class DepositWalletRaceError extends Error {}
 export class DepositBalanceOverflowError extends Error {}
 
+const manualDepositWhere = {
+  OR: [
+    {
+      metodo: MetodoDeposito.transferencia,
+      proveedorPago: 'manual-transfer',
+    },
+    {
+      metodo: MetodoDeposito.criptomoneda,
+      proveedorPago: 'manual-crypto',
+    },
+  ],
+} satisfies Prisma.DepositoWhereInput;
+
 const depositSelect = {
   id: true,
   tiendaId: true,
@@ -354,6 +367,8 @@ export class DepositRepository {
         where: {
           id: input.depositId,
           tiendaId: input.tenantId,
+          moneda: input.currency,
+          ...manualDepositWhere,
           billetera: {
             is: {
               tiendaId: input.tenantId,
@@ -494,6 +509,8 @@ export class DepositRepository {
   ): Prisma.DepositoWhereInput {
     return {
       tiendaId: scope.tenantId,
+      moneda: scope.currency,
+      ...manualDepositWhere,
       ...(filters.status ? { estado: filters.status } : {}),
       ...(filters.method ? { metodo: filters.method } : {}),
       billetera: {
@@ -513,6 +530,8 @@ export class DepositRepository {
   ): Prisma.DepositoWhereInput {
     return {
       tiendaId: tenantId,
+      moneda: currency,
+      ...manualDepositWhere,
       ...(filters.status ? { estado: filters.status } : {}),
       ...(filters.method ? { metodo: filters.method } : {}),
       billetera: {
