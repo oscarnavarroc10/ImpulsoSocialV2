@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { CatalogModule } from './modules/catalog';
 import { AuthModule } from './modules/auth';
 import { OrdersModule } from './modules/orders/orders.module';
+import { WalletsModule } from './modules/wallets/wallets.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { OrdersModule } from './modules/orders/orders.module';
     CatalogModule,
     AuthModule,
     OrdersModule,
+    WalletsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
