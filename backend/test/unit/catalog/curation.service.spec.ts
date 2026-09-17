@@ -30,6 +30,8 @@ describe('CurationService', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     process.env.PLATFORM_BASE_CURRENCY = 'USD';
+    process.env.BULKFOLLOWS_RATE_CURRENCY = 'USD';
+    delete process.env.BULKFOLLOWS_TO_PLATFORM_EXCHANGE_RATE;
   });
 
   it('approves a staged service by creating a new master service when no linked record exists', async () => {
@@ -219,8 +221,19 @@ describe('CurationService', () => {
       );
     });
 
-    it('rejects a rate with 3+ decimal digits ("5.123")', async () => {
-      stageWithRate('5.123');
+    it('accepts and rounds the four-decimal BulkFollows rate ("0.4375")', async () => {
+      stageWithRate('0.4375');
+      await service.curate('admin-rate', approveDto());
+      expect(masterServiceRepository.createCurated).toHaveBeenCalledWith(
+        expect.objectContaining({
+          providerCostAmount: 44,
+          providerCostCurrency: 'USD',
+        }),
+      );
+    });
+
+    it('rejects a rate with more than 8 decimal digits', async () => {
+      stageWithRate('5.123456789');
       await expect(service.curate('admin-rate', approveDto())).rejects.toThrow(
         BadRequestException,
       );
@@ -257,6 +270,164 @@ describe('CurationService', () => {
     it('rejects a rate with thousands separators ("1,000.00")', async () => {
       stageWithRate('1,000.00');
       await expect(service.curate('admin-rate', approveDto())).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('selling price configuration', () => {
+    function stageForPricing(rate: unknown = '0.4375') {
+      stagedServiceRepository.findById.mockResolvedValue({
+        id: 'staged-pricing',
+        providerServiceId: 'provider-pricing',
+        reviewStatus: 'pending',
+      });
+      providerServiceRepository.findById.mockResolvedValue({
+        id: 'provider-pricing',
+        rawPayload: { rate },
+      });
+      masterServiceRepository.findByProvenance.mockResolvedValue(null);
+      masterServiceRepository.createCurated.mockResolvedValue({
+        id: 'master-pricing',
+      });
+    }
+
+    function multiplierDto(multiplier: number) {
+      return StagedCurationDto.validate({
+        stagedServiceId: 'staged-pricing',
+        action: 'approve',
+        curatedTitle: 'Website traffic',
+        curatedDescription: 'Curated description',
+        curatedCategoryId: 'cat-website',
+        curatedSocialNetwork: 'Website',
+        sellingPriceMultiplier: multiplier,
+        isVisible: true,
+      });
+    }
+
+    it('converts the exact provider rate and applies the configured multiplier', async () => {
+      stageForPricing();
+      process.env.PLATFORM_BASE_CURRENCY = 'MXN';
+      process.env.BULKFOLLOWS_RATE_CURRENCY = 'USD';
+      process.env.BULKFOLLOWS_TO_PLATFORM_EXCHANGE_RATE = '18.00';
+
+      await service.curate('admin-pricing', multiplierDto(3));
+
+      expect(masterServiceRepository.createCurated).toHaveBeenCalledWith(
+        expect.objectContaining({
+          providerCostAmount: 44,
+          providerCostCurrency: 'USD',
+          defaultSellingPriceAmount: 2363,
+          defaultSellingPriceCurrency: 'MXN',
+          socialNetwork: 'Website',
+        }),
+      );
+      expect(auditService.recordCuration).toHaveBeenCalledWith(
+        'admin-pricing',
+        expect.objectContaining({
+          curatedFields: expect.objectContaining({
+            pricingStrategy: 'multiplier',
+            sellingPriceMultiplier: 3,
+          }),
+        }),
+      );
+    });
+
+    it('does not require an exchange rate when provider and platform currencies match', async () => {
+      stageForPricing('1.25');
+
+      await service.curate('admin-pricing', multiplierDto(2));
+
+      expect(masterServiceRepository.createCurated).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultSellingPriceAmount: 250,
+          defaultSellingPriceCurrency: 'USD',
+        }),
+      );
+    });
+
+    it.each([
+      { multiplier: 2, expectedAmount: 1575 },
+      { multiplier: 100, expectedAmount: 78750 },
+    ])(
+      'accepts boundary multiplier $multiplier',
+      async ({ multiplier, expectedAmount }) => {
+        stageForPricing();
+        process.env.PLATFORM_BASE_CURRENCY = 'MXN';
+        process.env.BULKFOLLOWS_TO_PLATFORM_EXCHANGE_RATE = '18';
+
+        await service.curate('admin-pricing', multiplierDto(multiplier));
+
+        expect(masterServiceRepository.createCurated).toHaveBeenCalledWith(
+          expect.objectContaining({
+            defaultSellingPriceAmount: expectedAmount,
+            defaultSellingPriceCurrency: 'MXN',
+          }),
+        );
+      },
+    );
+
+    it('fails closed when cross-currency pricing has no exchange rate', async () => {
+      stageForPricing();
+      process.env.PLATFORM_BASE_CURRENCY = 'MXN';
+
+      await expect(
+        service.curate('admin-pricing', multiplierDto(3)),
+      ).rejects.toThrow(BadRequestException);
+      expect(masterServiceRepository.createCurated).not.toHaveBeenCalled();
+    });
+
+    it.each([1, 101, 2.5])(
+      'rejects an invalid multiplier (%s)',
+      (sellingPriceMultiplier) => {
+        expect(() =>
+          StagedCurationDto.validate({
+            stagedServiceId: 'staged-pricing',
+            action: 'approve',
+            curatedTitle: 'Website traffic',
+            curatedDescription: 'Curated description',
+            curatedCategoryId: 'cat-website',
+            curatedSocialNetwork: 'Website',
+            sellingPriceMultiplier,
+            isVisible: true,
+          }),
+        ).toThrow(BadRequestException);
+      },
+    );
+
+    it('rejects mixing manual price and multiplier strategies', () => {
+      expect(() =>
+        StagedCurationDto.validate({
+          stagedServiceId: 'staged-pricing',
+          action: 'approve',
+          curatedTitle: 'Website traffic',
+          curatedDescription: 'Curated description',
+          curatedCategoryId: 'cat-website',
+          curatedSocialNetwork: 'Website',
+          defaultSellingPriceAmount: 2500,
+          defaultSellingPriceCurrency: 'MXN',
+          sellingPriceMultiplier: 3,
+          isVisible: true,
+        }),
+      ).toThrow(BadRequestException);
+    });
+
+    it('rejects a manual selling price in a currency different from the platform currency', async () => {
+      stageForPricing();
+      process.env.PLATFORM_BASE_CURRENCY = 'MXN';
+      const dto = StagedCurationDto.validate({
+        stagedServiceId: 'staged-pricing',
+        action: 'approve',
+        curatedTitle: 'Website traffic',
+        curatedDescription: 'Curated description',
+        curatedCategoryId: 'cat-website',
+        curatedSocialNetwork: 'Website',
+        defaultSellingPriceAmount: 2500,
+        defaultSellingPriceCurrency: 'USD',
+        isVisible: true,
+      });
+
+      await expect(service.curate('admin-pricing', dto)).rejects.toThrow(
         BadRequestException,
       );
     });
