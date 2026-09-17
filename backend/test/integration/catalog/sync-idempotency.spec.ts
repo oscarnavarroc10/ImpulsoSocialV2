@@ -337,6 +337,7 @@ function createHarness() {
 describe('Catalog sync integration: idempotency and curated-field protection', () => {
   beforeEach(() => {
     process.env.PLATFORM_BASE_CURRENCY = 'USD';
+    process.env.BULKFOLLOWS_RATE_CURRENCY = 'USD';
   });
 
   it('keeps provider imports idempotent and avoids duplicate staged pending rows', async () => {

@@ -1,6 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
 
-const ALLOWED_SOCIAL_NETWORKS = ['Instagram', 'Facebook', 'TikTok'] as const;
+const ALLOWED_SOCIAL_NETWORKS = [
+  'Instagram',
+  'Facebook',
+  'TikTok',
+  'Website',
+  'Other',
+] as const;
 
 export class StagedCurationDto {
   stagedServiceId!: string;
@@ -11,6 +17,7 @@ export class StagedCurationDto {
   curatedSocialNetwork?: (typeof ALLOWED_SOCIAL_NETWORKS)[number];
   defaultSellingPriceAmount?: number;
   defaultSellingPriceCurrency?: string;
+  sellingPriceMultiplier?: number;
   isVisible?: boolean;
 
   static validate(body: unknown): StagedCurationDto {
@@ -38,21 +45,21 @@ export class StagedCurationDto {
     if (typeof b.curatedSocialNetwork === 'string') {
       if (!ALLOWED_SOCIAL_NETWORKS.includes(b.curatedSocialNetwork as never)) {
         throw new BadRequestException(
-          'curatedSocialNetwork must be one of Instagram, Facebook, or TikTok',
+          'curatedSocialNetwork must be one of Instagram, Facebook, TikTok, Website, or Other',
         );
       }
-      dto.curatedSocialNetwork = b.curatedSocialNetwork as
-        'Instagram' | 'Facebook' | 'TikTok';
+      dto.curatedSocialNetwork =
+        b.curatedSocialNetwork as (typeof ALLOWED_SOCIAL_NETWORKS)[number];
     }
 
     if (b.defaultSellingPriceAmount != null) {
       if (
         typeof b.defaultSellingPriceAmount !== 'number' ||
         !Number.isInteger(b.defaultSellingPriceAmount) ||
-        b.defaultSellingPriceAmount < 0
+        b.defaultSellingPriceAmount <= 0
       ) {
         throw new BadRequestException(
-          'defaultSellingPriceAmount must be a non-negative integer',
+          'defaultSellingPriceAmount must be a positive integer',
         );
       }
       dto.defaultSellingPriceAmount = b.defaultSellingPriceAmount;
@@ -67,7 +74,23 @@ export class StagedCurationDto {
           'defaultSellingPriceCurrency must be a non-empty string',
         );
       }
-      dto.defaultSellingPriceCurrency = b.defaultSellingPriceCurrency;
+      dto.defaultSellingPriceCurrency = b.defaultSellingPriceCurrency
+        .trim()
+        .toUpperCase();
+    }
+
+    if (b.sellingPriceMultiplier != null) {
+      if (
+        typeof b.sellingPriceMultiplier !== 'number' ||
+        !Number.isInteger(b.sellingPriceMultiplier) ||
+        b.sellingPriceMultiplier < 2 ||
+        b.sellingPriceMultiplier > 100
+      ) {
+        throw new BadRequestException(
+          'sellingPriceMultiplier must be an integer between 2 and 100',
+        );
+      }
+      dto.sellingPriceMultiplier = b.sellingPriceMultiplier;
     }
 
     if (b.isVisible != null) {
@@ -92,13 +115,21 @@ export class StagedCurationDto {
         throw new BadRequestException(
           'curatedSocialNetwork is required for approval',
         );
-      if (dto.defaultSellingPriceAmount == null)
+      const hasManualAmount = dto.defaultSellingPriceAmount != null;
+      const hasManualCurrency = dto.defaultSellingPriceCurrency != null;
+      const hasMultiplier = dto.sellingPriceMultiplier != null;
+
+      if (hasManualAmount !== hasManualCurrency)
         throw new BadRequestException(
-          'defaultSellingPriceAmount is required for approval',
+          'defaultSellingPriceAmount and defaultSellingPriceCurrency must be provided together',
         );
-      if (!dto.defaultSellingPriceCurrency)
+      if (hasMultiplier && hasManualAmount)
         throw new BadRequestException(
-          'defaultSellingPriceCurrency is required for approval',
+          'Use either sellingPriceMultiplier or a manual selling price, not both',
+        );
+      if (!hasMultiplier && !hasManualAmount)
+        throw new BadRequestException(
+          'sellingPriceMultiplier or a manual selling price is required for approval',
         );
       if (dto.isVisible == null)
         throw new BadRequestException('isVisible is required for approval');

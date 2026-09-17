@@ -10,29 +10,35 @@ import { StagedServiceRepository } from '../infrastructure/staged-service.reposi
 import { StagedCurationDto } from './dto/staged-curation.dto';
 
 const PLATFORM_BASE_CURRENCY = 'PLATFORM_BASE_CURRENCY';
+const BULKFOLLOWS_RATE_CURRENCY = 'BULKFOLLOWS_RATE_CURRENCY';
+const BULKFOLLOWS_TO_PLATFORM_EXCHANGE_RATE =
+  'BULKFOLLOWS_TO_PLATFORM_EXCHANGE_RATE';
+const MAX_DECIMAL_PLACES = 8;
+const PRISMA_INT_MAX = 2_147_483_647n;
 
-function readPlatformBaseCurrency(): string {
-  const currency = process.env[PLATFORM_BASE_CURRENCY]?.trim();
-  if (!currency) {
+type ParsedDecimal = {
+  unscaled: bigint;
+  scale: bigint;
+};
+
+function readCurrency(name: string): string {
+  const currency = process.env[name]?.trim().toUpperCase();
+  if (!currency || !/^[A-Z]{3}$/.test(currency)) {
     throw new BadRequestException(
-      `${PLATFORM_BASE_CURRENCY} must be configured for curation approval`,
+      `${name} must be configured as a three-letter currency code`,
     );
   }
   return currency;
 }
 
-// Whole part plus at most 2 fractional digits; no sign, no thousands separators.
-const DECIMAL_MINOR_UNITS_PATTERN = /^\d+(\.\d{1,2})?$/;
+const DECIMAL_PATTERN = new RegExp(
+  `^\\d+(?:\\.\\d{1,${MAX_DECIMAL_PLACES}})?$`,
+);
 
-/**
- * Converts a non-negative decimal amount (at most 2 fractional digits) into
- * integer minor units (cents) using string/BigInt arithmetic exclusively, so
- * the conversion never routes through floating-point `Number` multiplication.
- */
-function parseDecimalToMinorUnits(
+function parsePositiveDecimal(
   value: unknown,
   errorMessage: string,
-): number {
+): ParsedDecimal {
   if (typeof value === 'number' && !Number.isFinite(value)) {
     throw new BadRequestException(errorMessage);
   }
@@ -41,30 +47,66 @@ function parseDecimalToMinorUnits(
   }
 
   const raw = typeof value === 'number' ? value.toString() : value;
-  if (!DECIMAL_MINOR_UNITS_PATTERN.test(raw)) {
+  if (!DECIMAL_PATTERN.test(raw)) {
     throw new BadRequestException(errorMessage);
   }
 
   const [wholePart, fractionalPart = ''] = raw.split('.');
-  const minorUnits =
-    BigInt(wholePart) * 100n + BigInt(fractionalPart.padEnd(2, '0'));
+  const scale = 10n ** BigInt(fractionalPart.length);
+  const unscaled =
+    BigInt(wholePart) * scale + BigInt(fractionalPart || '0');
 
-  if (minorUnits > BigInt(Number.MAX_SAFE_INTEGER)) {
+  if (unscaled <= 0n) {
     throw new BadRequestException(errorMessage);
   }
 
-  return Number(minorUnits);
+  return { unscaled, scale };
 }
 
-function parseProviderCostMinorUnits(rawPayload: unknown): number {
+function readProviderRate(rawPayload: unknown): ParsedDecimal {
   if (!rawPayload || typeof rawPayload !== 'object') {
     throw new BadRequestException('Provider payload is missing for approval');
   }
 
   const rate = (rawPayload as Record<string, unknown>).rate;
-  return parseDecimalToMinorUnits(
+  return parsePositiveDecimal(
     rate,
     'Provider payload does not contain a normalized rate value',
+  );
+}
+
+function toPrismaInt(value: bigint, errorMessage: string): number {
+  if (value > PRISMA_INT_MAX) {
+    throw new BadRequestException(errorMessage);
+  }
+  return Number(value);
+}
+
+function roundToMinorUnits(decimal: ParsedDecimal): number {
+  const scaled = decimal.unscaled * 100n;
+  const quotient = scaled / decimal.scale;
+  const remainder = scaled % decimal.scale;
+  const rounded = quotient + (remainder * 2n >= decimal.scale ? 1n : 0n);
+
+  return toPrismaInt(rounded, 'Provider rate exceeds the supported range');
+}
+
+function calculateSellingPriceMinorUnits(
+  providerRate: ParsedDecimal,
+  exchangeRate: ParsedDecimal,
+  multiplier: number,
+): number {
+  const numerator =
+    providerRate.unscaled *
+    exchangeRate.unscaled *
+    BigInt(multiplier) *
+    100n;
+  const denominator = providerRate.scale * exchangeRate.scale;
+  const roundedUp = (numerator + denominator - 1n) / denominator;
+
+  return toPrismaInt(
+    roundedUp,
+    'Calculated selling price exceeds the supported range',
   );
 }
 
@@ -107,10 +149,46 @@ export class CurationService {
       throw new NotFoundException('Provider service not found');
     }
 
-    const providerCostAmount = parseProviderCostMinorUnits(
-      providerService.rawPayload,
-    );
-    const providerCostCurrency = readPlatformBaseCurrency();
+    const providerRate = readProviderRate(providerService.rawPayload);
+    const providerCostAmount = roundToMinorUnits(providerRate);
+    const providerCostCurrency = readCurrency(BULKFOLLOWS_RATE_CURRENCY);
+    const platformBaseCurrency = readCurrency(PLATFORM_BASE_CURRENCY);
+
+    let defaultSellingPriceAmount: number;
+    let defaultSellingPriceCurrency: string;
+
+    if (dto.sellingPriceMultiplier != null) {
+      const exchangeRate =
+        providerCostCurrency === platformBaseCurrency
+          ? { unscaled: 1n, scale: 1n }
+          : parsePositiveDecimal(
+              process.env[BULKFOLLOWS_TO_PLATFORM_EXCHANGE_RATE]?.trim(),
+              `${BULKFOLLOWS_TO_PLATFORM_EXCHANGE_RATE} must be configured as a positive decimal`,
+            );
+
+      defaultSellingPriceAmount = calculateSellingPriceMinorUnits(
+        providerRate,
+        exchangeRate,
+        dto.sellingPriceMultiplier,
+      );
+      defaultSellingPriceCurrency = platformBaseCurrency;
+    } else {
+      if (
+        dto.defaultSellingPriceAmount == null ||
+        dto.defaultSellingPriceCurrency == null
+      ) {
+        throw new BadRequestException(
+          'Manual selling price amount and currency are required',
+        );
+      }
+      if (dto.defaultSellingPriceCurrency !== platformBaseCurrency) {
+        throw new BadRequestException(
+          `Manual selling price currency must match ${PLATFORM_BASE_CURRENCY}`,
+        );
+      }
+      defaultSellingPriceAmount = dto.defaultSellingPriceAmount;
+      defaultSellingPriceCurrency = dto.defaultSellingPriceCurrency;
+    }
 
     const existing = await this.masterServiceRepository.findByProvenance(
       providerService.id,
@@ -123,8 +201,8 @@ export class CurationService {
       socialNetwork: dto.curatedSocialNetwork!,
       providerCostAmount,
       providerCostCurrency,
-      defaultSellingPriceAmount: dto.defaultSellingPriceAmount!,
-      defaultSellingPriceCurrency: dto.defaultSellingPriceCurrency!,
+      defaultSellingPriceAmount,
+      defaultSellingPriceCurrency,
       isVisible: dto.isVisible!,
       status: 'active' as const,
       provenanceRef: providerService.id,
@@ -153,6 +231,11 @@ export class CurationService {
         socialNetwork: approvalData.socialNetwork,
         defaultSellingPriceAmount: approvalData.defaultSellingPriceAmount,
         defaultSellingPriceCurrency: approvalData.defaultSellingPriceCurrency,
+        pricingStrategy:
+          dto.sellingPriceMultiplier == null ? 'manual' : 'multiplier',
+        ...(dto.sellingPriceMultiplier == null
+          ? {}
+          : { sellingPriceMultiplier: dto.sellingPriceMultiplier }),
         isVisible: approvalData.isVisible,
       },
       providerCost: {
