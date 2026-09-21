@@ -1,0 +1,281 @@
+{
+  "version": 1,
+  "tenantSlug": "impulsosocial",
+  "apiBaseUrl": "/api",
+  "brand": {
+    "name": "ImpulsoSocial",
+    "shortName": "ImpulsoSocial",
+    "taglineKey": "home.tagline"
+  },
+  "theme": {
+    "defaultPreference": "light",
+    "defaultPreset": "spotify",
+    "presets": [
+      {
+        "key": "spotify",
+        "labelKey": "themes.spotify",
+        "light": {
+          "primary": "#12843D",
+          "primaryContrast": "#FFFFFF",
+          "secondary": "#0B6B31",
+          "accent": "#1DB954",
+          "background": "#F3F6F4",
+          "surface": "#FFFFFF",
+          "surfaceElevated": "#E9EFEB",
+          "text": "#0A0D0B",
+          "textMuted": "#56615A",
+          "border": "#D4DDD7",
+          "success": "#12843D",
+          "warning": "#9A6700",
+          "danger": "#B42318",
+          "focus": "#0B7A36",
+          "heroStart": "#F7FBFF",
+          "heroEnd": "#E7F0FF",
+          "authSurface": "#07140E",
+          "authText": "#F6FFF9"
+        },
+        "dark": {
+          "primary": "#1DB954",
+          "primaryContrast": "#041108",
+          "secondary": "#53E389",
+          "accent": "#1ED760",
+          "background": "#080A09",
+          "surface": "#111513",
+          "surfaceElevated": "#181D1A",
+          "text": "#F5F7F6",
+          "textMuted": "#A7B0AB",
+          "border": "#29312C",
+          "success": "#34D399",
+          "warning": "#F5C451",
+          "danger": "#FF7B72",
+          "focus": "#73F3A4",
+          "heroStart": "#07140E",
+          "heroEnd": "#102946",
+          "authSurface": "#07140E",
+          "authText": "#F6FFF9"
+        }
+      },
+      {
+        "key": "minimal",
+        "labelKey": "themes.minimal",
+        "light": {
+          "primary": "#111827",
+          "primaryContrast": "#FFFFFF",
+          "secondary": "#374151",
+          "accent": "#6B7280",
+          "background": "#F7F7F5",
+          "surface": "#FFFFFF",
+          "surfaceElevated": "#EFEFEB",
+          "text": "#111111",
+          "textMuted": "#606060",
+          "border": "#DADAD4",
+          "success": "#18794E",
+          "warning": "#8A6100",
+          "danger": "#B42318",
+          "focus": "#111827",
+          "heroStart": "#FFFFFF",
+          "heroEnd": "#EFEFEB",
+          "authSurface": "#111111",
+          "authText": "#FFFFFF"
+        },
+        "dark": {
+          "primary": "#F5F5F4",
+          "primaryContrast": "#111111",
+          "secondary": "#D6D3D1",
+          "accent": "#A8A29E",
+          "background": "#0D0D0C",
+          "surface": "#171716",
+          "surfaceElevated": "#212120",
+          "text": "#FAFAF9",
+          "textMuted": "#A8A29E",
+          "border": "#333330",
+          "success": "#34D399",
+          "warning": "#F5C451",
+          "danger": "#FF7B72",
+          "focus": "#F5F5F4",
+          "heroStart": "#0D0D0C",
+          "heroEnd": "#212120",
+          "authSurface": "#111111",
+          "authText": "#FAFAF9"
+        }
+      },
+      {
+        "key": "x",
+        "labelKey": "themes.x",
+        "light": {
+          "primary": "#0F1419",
+          "primaryContrast": "#FFFFFF",
+          "secondary": "#1D9BF0",
+          "accent": "#1D9BF0",
+          "background": "#FFFFFF",
+          "surface": "#F7F9F9",
+          "surfaceElevated": "#EFF3F4",
+          "text": "#0F1419",
+          "textMuted": "#536471",
+          "border": "#CFD9DE",
+          "success": "#00BA7C",
+          "warning": "#B88600",
+          "danger": "#F4212E",
+          "focus": "#1D9BF0",
+          "heroStart": "#FFFFFF",
+          "heroEnd": "#E8F4FC",
+          "authSurface": "#0F1419",
+          "authText": "#FFFFFF"
+        },
+        "dark": {
+          "primary": "#EFF3F4",
+          "primaryContrast": "#0F1419",
+          "secondary": "#1D9BF0",
+          "accent": "#1D9BF0",
+          "background": "#0F1419",
+          "surface": "#16181C",
+          "surfaceElevated": "#202327",
+          "text": "#E7E9EA",
+          "textMuted": "#71767B",
+          "border": "#2F3336",
+          "success": "#00BA7C",
+          "warning": "#FFD400",
+          "danger": "#F4212E",
+          "focus": "#1D9BF0",
+          "heroStart": "#0F1419",
+          "heroEnd": "#162D3D",
+          "authSurface": "#0F1419",
+          "authText": "#E7E9EA"
+        }
+      },
+      {
+        "key": "instagram",
+        "labelKey": "themes.instagram",
+        "light": {
+          "primary": "#E1306C",
+          "primaryContrast": "#FFFFFF",
+          "secondary": "#C13584",
+          "accent": "#F77737",
+          "background": "#FAFAFA",
+          "surface": "#FFFFFF",
+          "surfaceElevated": "#F4F1F3",
+          "text": "#1F1A1D",
+          "textMuted": "#6D6268",
+          "border": "#E6DDE2",
+          "success": "#12843D",
+          "warning": "#9A6700",
+          "danger": "#D92D20",
+          "focus": "#E1306C",
+          "heroStart": "#FFF8FC",
+          "heroEnd": "#EEF6FF",
+          "authSurface": "#1D151A",
+          "authText": "#FFF7FA"
+        },
+        "dark": {
+          "primary": "#F35383",
+          "primaryContrast": "#19070D",
+          "secondary": "#FF8A65",
+          "accent": "#F77737",
+          "background": "#120D10",
+          "surface": "#1D151A",
+          "surfaceElevated": "#2A1C24",
+          "text": "#FFF7FA",
+          "textMuted": "#C7B3BE",
+          "border": "#49313E",
+          "success": "#34D399",
+          "warning": "#F5C451",
+          "danger": "#FF7B72",
+          "focus": "#F35383",
+          "heroStart": "#120D10",
+          "heroEnd": "#2A1C24",
+          "authSurface": "#120D10",
+          "authText": "#FFF7FA"
+        }
+      }
+    ]
+  },
+  "localization": {
+    "defaultLocale": "es-MX",
+    "supportedLocales": ["es-MX", "en"]
+  },
+  "socialLinks": {
+    "instagramUrl": "https://www.instagram.com/"
+  },
+  "socialAuth": {
+    "google": {
+      "availability": "comingSoon"
+    },
+    "apple": {
+      "availability": "comingSoon"
+    }
+  },
+  "catalog": {
+    "featuredLimit": 4,
+    "networks": [
+      {
+        "key": "instagram",
+        "labelKey": "common.instagram",
+        "icon": "instagram",
+        "enabled": true,
+        "categories": [
+          {
+            "key": "followers",
+            "icon": "followers",
+            "labelKey": "home.categories.followers",
+            "order": 1
+          },
+          {
+            "key": "likes",
+            "icon": "likes",
+            "labelKey": "home.categories.likes",
+            "order": 2
+          },
+          {
+            "key": "views",
+            "icon": "views",
+            "labelKey": "home.categories.views",
+            "order": 3
+          },
+          {
+            "key": "reposts",
+            "icon": "reposts",
+            "labelKey": "home.categories.reposts",
+            "order": 4
+          }
+        ]
+      }
+    ]
+  },
+  "payments": [
+    {
+      "key": "paypal",
+      "icon": "wallet",
+      "labelKey": "payments.paypal",
+      "descriptionKey": "payments.descriptions.paypal",
+      "availability": "comingSoon"
+    },
+    {
+      "key": "mercadoPago",
+      "icon": "wallet",
+      "labelKey": "payments.mercadoPago",
+      "descriptionKey": "payments.descriptions.mercadoPago",
+      "availability": "comingSoon"
+    },
+    {
+      "key": "card",
+      "icon": "card",
+      "labelKey": "payments.card",
+      "descriptionKey": "payments.descriptions.card",
+      "availability": "comingSoon"
+    },
+    {
+      "key": "transfer",
+      "icon": "bank",
+      "labelKey": "payments.transfer",
+      "descriptionKey": "payments.descriptions.transfer",
+      "availability": "manual"
+    },
+    {
+      "key": "crypto",
+      "icon": "crypto",
+      "labelKey": "payments.crypto",
+      "descriptionKey": "payments.descriptions.crypto",
+      "availability": "manual"
+    }
+  ]
+}

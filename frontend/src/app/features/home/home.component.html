@@ -1,0 +1,197 @@
+<section class="hero">
+  <div class="shell hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow">{{ 'home.eyebrow' | transloco }}</span>
+      <h1>{{ 'home.title' | transloco }}</h1>
+      <p class="hero-tagline">{{ 'home.tagline' | transloco }}</p>
+      <div class="hero-actions">
+        <a class="button" routerLink="/services">
+          {{ 'home.primaryCta' | transloco }}
+          <app-icon name="arrowRight" />
+        </a>
+        <a class="button button-ghost" routerLink="/" fragment="how-it-works">
+          {{ 'home.secondaryCta' | transloco }}
+        </a>
+      </div>
+      <div class="trust-row" [attr.aria-label]="'home.trustLabel' | transloco">
+        @for (key of trustKeys; track key) {
+          <span><app-icon name="check" />{{ 'home.trust.' + key | transloco }}</span>
+        }
+      </div>
+    </div>
+
+    <aside class="service-finder" [attr.aria-label]="'home.discoveryTitle' | transloco">
+      <div class="finder-header">
+        <div>
+          <span class="eyebrow">{{ 'home.discoveryEyebrow' | transloco }}</span>
+          <h2>{{ 'common.instagram' | transloco }}</h2>
+        </div>
+      </div>
+      @if (activeNetwork(); as network) {
+        <div class="discovery-list">
+          @for (category of network.categories; track category.key) {
+            <a class="discovery-item" routerLink="/services">
+              <span class="category-icon"><app-icon [name]="category.icon" /></span>
+              <span>
+                <strong>{{ category.labelKey | transloco }}</strong>
+                <small>{{ 'home.categoryBenefits.' + category.key | transloco }}</small>
+              </span>
+            </a>
+          }
+        </div>
+      }
+    </aside>
+  </div>
+</section>
+
+<section class="network-strip" aria-labelledby="network-title">
+  <div class="shell network-strip-inner">
+    <div>
+      <span class="eyebrow">{{ 'home.networkTitle' | transloco }}</span>
+      <h2 id="network-title">{{ 'home.networkHeading' | transloco }}</h2>
+    </div>
+    <div class="network-pill">
+      <app-icon name="instagram" />{{ 'common.instagram' | transloco }}
+    </div>
+    <p>{{ 'home.networkIntro' | transloco }}</p>
+  </div>
+</section>
+
+<section class="section shell" aria-labelledby="categories-title">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">{{ 'home.categoriesEyebrow' | transloco }}</span>
+      <h2 id="categories-title">{{ 'home.categoriesTitle' | transloco }}</h2>
+      <p>{{ 'home.categoriesIntro' | transloco }}</p>
+    </div>
+    <a class="text-link" routerLink="/services">
+      {{ 'common.explore' | transloco }}
+      <app-icon name="arrowRight" />
+    </a>
+  </div>
+  <div class="category-grid">
+    @for (category of activeNetwork()?.categories; track category.key) {
+      <a class="category-card" routerLink="/services">
+        <span class="category-icon"><app-icon [name]="category.icon" [large]="true" /></span>
+        <span>
+          <strong>{{ category.labelKey | transloco }}</strong>
+          <small>{{ 'home.categoryDescriptions.' + category.key | transloco }}</small>
+        </span>
+        <span class="card-action">
+          {{ 'home.seeOptions' | transloco }}
+          <app-icon name="arrowRight" />
+        </span>
+      </a>
+    }
+  </div>
+</section>
+
+<section id="how-it-works" class="section section-elevated" aria-labelledby="process-title">
+  <div class="shell">
+    <div class="section-heading centered-heading">
+      <div>
+        <span class="eyebrow">{{ 'home.processEyebrow' | transloco }}</span>
+        <h2 id="process-title">{{ 'home.processTitle' | transloco }}</h2>
+        <p>{{ 'home.processIntro' | transloco }}</p>
+      </div>
+    </div>
+    <div class="step-grid">
+      @for (key of stepKeys; track key; let index = $index) {
+        <article class="step">
+          <span class="step-number">{{ index + 1 }}</span>
+          <h3>{{ 'home.steps.' + key + '.title' | transloco }}</h3>
+          <p>{{ 'home.steps.' + key + '.text' | transloco }}</p>
+        </article>
+      }
+    </div>
+  </div>
+</section>
+
+<section class="section shell credibility-grid" aria-labelledby="benefits-title">
+  <div class="credibility-copy">
+    <span class="eyebrow">{{ 'home.benefitsEyebrow' | transloco }}</span>
+    <h2 id="benefits-title">{{ 'home.benefitsTitle' | transloco }}</h2>
+    <p>{{ 'home.benefitsIntro' | transloco }}</p>
+    <a class="text-link" routerLink="/about">
+      {{ 'common.learnMore' | transloco }}
+      <app-icon name="arrowRight" />
+    </a>
+  </div>
+  <div class="benefit-list">
+    @for (key of benefitKeys; track key) {
+      <article>
+        <span><app-icon name="check" /></span>
+        <div>
+          <h3>{{ 'home.benefits.' + key + '.title' | transloco }}</h3>
+          <p>{{ 'home.benefits.' + key + '.text' | transloco }}</p>
+        </div>
+      </article>
+    }
+  </div>
+</section>
+
+<section class="section section-elevated payments-section" aria-labelledby="payments-title">
+  <div class="shell split-section">
+    <div>
+      <span class="eyebrow">{{ 'home.paymentsEyebrow' | transloco }}</span>
+      <h2 id="payments-title">{{ 'home.paymentsTitle' | transloco }}</h2>
+      <p>{{ 'home.paymentsIntro' | transloco }}</p>
+      <p class="notice"><app-icon name="alert" />{{ 'home.paymentsNotice' | transloco }}</p>
+    </div>
+    <div class="payment-grid">
+      @for (payment of config.config()?.payments; track payment.key) {
+        <article
+          class="payment-card"
+          [class.is-manual]="payment.availability === 'manual'"
+          [class.is-coming-soon]="payment.availability === 'comingSoon'"
+        >
+          <div class="payment-card-header">
+            <span class="payment-icon"><app-icon [name]="payment.icon" /></span>
+            @if (payment.availability === 'manual') {
+              <span class="payment-state">{{ 'common.manual' | transloco }}</span>
+            } @else if (payment.availability === 'disabled') {
+              <span class="payment-state">{{ 'common.unavailable' | transloco }}</span>
+            }
+          </div>
+          <h3>{{ payment.labelKey | transloco }}</h3>
+          <p>{{ payment.descriptionKey | transloco }}</p>
+        </article>
+      }
+    </div>
+  </div>
+</section>
+
+<section class="section shell faq-home" aria-labelledby="faq-title">
+  <div class="section-heading">
+    <div>
+      <span class="eyebrow">{{ 'home.faqEyebrow' | transloco }}</span>
+      <h2 id="faq-title">{{ 'home.faqTitle' | transloco }}</h2>
+    </div>
+    <a class="text-link" routerLink="/faq">
+      {{ 'home.allQuestions' | transloco }}
+      <app-icon name="arrowRight" />
+    </a>
+  </div>
+  <div class="faq-list faq-list-home">
+    @for (key of faqKeys; track key) {
+      <details>
+        <summary>{{ 'faq.items.' + key + '.question' | transloco }}</summary>
+        <p>{{ 'faq.items.' + key + '.answer' | transloco }}</p>
+      </details>
+    }
+  </div>
+</section>
+
+<section class="final-cta">
+  <div class="shell final-cta-inner">
+    <div>
+      <span class="eyebrow">{{ 'home.finalEyebrow' | transloco }}</span>
+      <h2>{{ 'home.finalTitle' | transloco }}</h2>
+      <p>{{ 'home.finalText' | transloco }}</p>
+    </div>
+    <a class="button button-inverse" routerLink="/services">
+      {{ 'home.primaryCta' | transloco }}
+      <app-icon name="arrowRight" />
+    </a>
+  </div>
+</section>

@@ -1,0 +1,324 @@
+{
+  "common": {
+    "instagram": "Instagram",
+    "whatsapp": "WhatsApp",
+    "tiktok": "TikTok",
+    "menu": "Menu",
+    "close": "Close",
+    "theme": "Theme",
+    "appearance": "Visual style",
+    "language": "Language",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "spanish": "Spanish",
+    "english": "English",
+    "loading": "Loading",
+    "retry": "Retry",
+    "pagination": "Pagination",
+    "previous": "Previous page",
+    "next": "Next page",
+    "login": "Sign in",
+    "register": "Create account",
+    "soon": "Coming soon",
+    "manual": "Manual review",
+    "unavailable": "Unavailable",
+    "learnMore": "Learn more",
+    "backHome": "Back home",
+    "explore": "Explore services",
+    "ready": "Ready",
+    "myAccount": "My account",
+    "logout": "Sign out"
+  },
+  "navigation": {
+    "home": "Home",
+    "services": "Services",
+    "howItWorks": "How it works",
+    "about": "About us",
+    "faq": "FAQ"
+  },
+  "themes": {
+    "spotify": "Green",
+    "minimal": "Minimal",
+    "x": "X style",
+    "instagram": "Instagram"
+  },
+  "home": {
+    "eyebrow": "Grow with clarity",
+    "title": "Grow your presence without losing control",
+    "tagline": "Organized services, visible pricing and tracking from your account.",
+    "primaryCta": "Explore services",
+    "secondaryCta": "How it works",
+    "trustLabel": "ImpulsoSocial advantages",
+    "trust": {
+      "pricing": "Visible pricing",
+      "process": "Simple process",
+      "support": "Order history"
+    },
+    "discoveryEyebrow": "Choose your goal",
+    "discoveryTitle": "Instagram services",
+    "networkLabel": "Available network",
+    "viewCatalog": "View full catalog",
+    "networkTitle": "First release",
+    "networkHeading": "Instagram, without endless menus",
+    "networkIntro": "We are starting with one network to provide a clearer, more focused experience.",
+    "categoriesEyebrow": "Services by goal",
+    "categoriesTitle": "What do you want to grow?",
+    "categoriesIntro": "Choose a category and find the option that matches your goal.",
+    "seeOptions": "View options",
+    "categoryDescriptions": {
+      "followers": "Expand the reach of your profile",
+      "likes": "Strengthen engagement on your posts",
+      "views": "Give your content greater visibility",
+      "reposts": "Help your content circulate"
+    },
+    "categoryBenefits": {
+      "followers": "Reach",
+      "likes": "Engagement",
+      "views": "Visibility",
+      "reposts": "Distribution"
+    },
+    "categories": {
+      "followers": "Followers",
+      "likes": "Likes",
+      "views": "Views",
+      "reposts": "Reposts"
+    },
+    "featuredTitle": "Featured services",
+    "featuredIntro": "The real catalog will appear here when it is available.",
+    "processEyebrow": "A direct process",
+    "processTitle": "Get started in three steps",
+    "processIntro": "No confusing panels or unnecessary technical information.",
+    "steps": {
+      "explore": {
+        "title": "Explore",
+        "text": "Review the categories and find the service that matches your goal."
+      },
+      "configure": {
+        "title": "Configure",
+        "text": "Provide the required information with clear instructions before continuing."
+      },
+      "track": {
+        "title": "Track progress",
+        "text": "Review your requests from one place when the workflow is enabled."
+      }
+    },
+    "benefitsEyebrow": "Built for better buying",
+    "benefitsTitle": "Clarity in every decision",
+    "benefitsIntro": "ImpulsoSocial prioritizes useful information and removes the noise of traditional panels.",
+    "benefits": {
+      "catalog": {
+        "title": "Clear catalog",
+        "text": "Services organized around the goal you want to achieve."
+      },
+      "pricing": {
+        "title": "Transparent pricing",
+        "text": "The selling price is shown before you start any request."
+      },
+      "experience": {
+        "title": "Safe experience",
+        "text": "Future actions are clearly distinguished from available features."
+      }
+    },
+    "paymentsEyebrow": "Deposit options",
+    "paymentsTitle": "Methods designed around how you pay",
+    "paymentsIntro": "Each tenant can configure which alternatives to display. Automated integrations will only be enabled when the backend supports them.",
+    "paymentsNotice": "This section is informational; it does not process payments in this release.",
+    "faqEyebrow": "Clear your doubts",
+    "faqTitle": "Before you begin",
+    "allQuestions": "View all questions",
+    "finalEyebrow": "Everything starts with a choice",
+    "finalTitle": "Find the right service for your goal",
+    "finalText": "Explore the available categories and learn how the ImpulsoSocial experience will work."
+  },
+  "about": {
+    "title": "Social growth without complications",
+    "intro": "We are building a clear experience for creators, businesses and agencies that need to move forward without wasting time.",
+    "proofTitle": "A storefront designed around customers",
+    "proofText": "Less technical language, better navigation and decisions with visible information.",
+    "purposeEyebrow": "Our purpose",
+    "purposeTitle": "Make simple what others make confusing",
+    "text": "ImpulsoSocial was created to turn a technical service panel into an easy-to-understand storefront. We organize the experience around your goals, not provider processes.",
+    "secondText": "The platform is built in stages and only shows real capabilities. When something is not available yet, we communicate it directly.",
+    "values": {
+      "clarity": {
+        "title": "Clarity",
+        "text": "Useful information, visible prices and understandable states."
+      },
+      "honesty": {
+        "title": "Honesty",
+        "text": "No guaranteed promises, invented figures or simulated actions."
+      },
+      "flexibility": {
+        "title": "Flexibility",
+        "text": "Brand, colors, languages and offering configurable for every tenant."
+      }
+    },
+    "ctaTitle": "Discover the experience",
+    "ctaText": "Explore the categories available for this first release."
+  },
+  "faq": {
+    "title": "Frequently asked questions",
+    "intro": "Direct answers about the catalog, accounts and features that will be enabled in stages.",
+    "asideTitle": "Looking for a service?",
+    "asideText": "Start by reviewing the available Instagram categories.",
+    "items": {
+      "explore": {
+        "question": "Can I explore before registering?",
+        "answer": "Yes. Public navigation and categories can be reviewed without creating an account."
+      },
+      "networks": {
+        "question": "Which networks are available?",
+        "answer": "Instagram is the only network enabled in this first release."
+      },
+      "results": {
+        "question": "Are results guaranteed?",
+        "answer": "No. We provide clear information without promising guaranteed results."
+      },
+      "purchase": {
+        "question": "Can I buy from the site now?",
+        "answer": "Purchasing will be enabled once the catalog and order workflow are completely connected in the frontend."
+      },
+      "payments": {
+        "question": "Which payment methods will be available?",
+        "answer": "The storefront displays the methods configured by the tenant and only enables options with an available flow."
+      },
+      "customization": {
+        "question": "Can I change the language or theme?",
+        "answer": "Yes. You can use Spanish or English, choose dark, light or system mode, and switch between four visual styles."
+      }
+    }
+  },
+  "services": {
+    "eyebrow": "Public catalog",
+    "title": "Service catalog",
+    "text": "Browse the available categories and choose the option that matches your goal."
+  },
+  "auth": {
+    "backToStore": "Back to storefront",
+    "promoEyebrow": "Your growth, in one place",
+    "promoTitle": "Turn your goals into clear actions",
+    "promoText": "Access an experience designed to discover services, manage your account and track progress without confusing panels.",
+    "promoBenefits": {
+      "catalog": "A catalog organized around what you want to achieve",
+      "pricing": "Visible selling prices before you decide",
+      "control": "One account ready to centralize your requests"
+    },
+    "loginEyebrow": "Good to have you back",
+    "registerEyebrow": "Start with ImpulsoSocial",
+    "loginTitle": "Sign in",
+    "registerTitle": "Create your account",
+    "loginIntro": "Use the email and password you registered with.",
+    "registerIntro": "Create your access in under a minute.",
+    "googleLogin": "Continue with Google",
+    "appleLogin": "Continue with Apple",
+    "googleRegister": "Sign up with Google",
+    "appleRegister": "Sign up with Apple",
+    "orEmail": "or continue with email",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "email": "Email address",
+    "emailPlaceholder": "name@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "confirmPassword": "Confirm password",
+    "confirmPasswordPlaceholder": "Enter it again",
+    "togglePassword": "Show or hide password",
+    "acceptTerms": "I accept the terms of use and privacy notice.",
+    "submitting": "Processing…",
+    "createAccount": "Create my account",
+    "loginAction": "Go to my account",
+    "haveAccount": "Already have an account?",
+    "noAccount": "Don't have an account yet?",
+    "registerFree": "Create account",
+    "securityNote": "Your credentials are sent only to the configured backend.",
+    "validation": {
+      "emailRequired": "Enter your email address.",
+      "emailInvalid": "Enter a valid email address.",
+      "passwordRequired": "Enter your password.",
+      "passwordLength": "Your password must contain at least 8 characters.",
+      "nameRequired": "Enter your name.",
+      "nameLength": "Your name must contain at least 2 characters.",
+      "confirmRequired": "Confirm your password.",
+      "passwordMismatch": "Passwords do not match.",
+      "termsRequired": "You must accept the terms to continue."
+    },
+    "errors": {
+      "validation": "Review your information and try again.",
+      "unauthorized": "The email or password is incorrect.",
+      "conflict": "An account with that email already exists.",
+      "network": "We could not reach the server. Check your connection.",
+      "server": "The service is currently unavailable.",
+      "unknown": "We could not complete your request.",
+      "busy": "A request is already in progress."
+    }
+  },
+  "account": {
+    "yourAccount": "Your account",
+    "navigation": "Account navigation",
+    "summary": "Overview",
+    "ordersSoon": "Orders",
+    "walletSoon": "Wallet",
+    "support": "Help",
+    "welcome": "Hello",
+    "eyebrow": "Your ImpulsoSocial space",
+    "title": "You're ready to find your next service",
+    "intro": "Explore the catalog and review the information available for your account.",
+    "explore": "Explore services",
+    "profileEyebrow": "Real information from your session",
+    "profileTitle": "Your profile",
+    "role": "Role",
+    "nextEyebrow": "Next step",
+    "nextTitle": "Start with the catalog",
+    "nextText": "Review the available categories or clear your doubts before choosing.",
+    "viewCatalog": "View catalog",
+    "getHelp": "Read frequently asked questions",
+    "comingTitle": "Your activity, all in one place",
+    "comingText": "Orders, wallet and tracking are organized from your account.",
+    "future": {
+      "orders": {
+        "title": "Your orders",
+        "text": "History and status for every request."
+      },
+      "wallet": {
+        "title": "Wallet and deposits",
+        "text": "Real transactions, without demo figures."
+      },
+      "tracking": { "title": "Tracking", "text": "Follow each request from one place." }
+    }
+  },
+  "payments": {
+    "paypal": "PayPal",
+    "mercadoPago": "Mercado Pago",
+    "card": "Card",
+    "transfer": "Bank transfer",
+    "crypto": "Cryptocurrency",
+    "descriptions": {
+      "paypal": "Fast digital payment once the integration is available.",
+      "mercadoPago": "A local payment alternative for customers in Mexico.",
+      "card": "Credit and debit cards through a secure payment gateway.",
+      "transfer": "A deposit reviewed and credited manually.",
+      "crypto": "Deposit with supported assets and manual validation."
+    }
+  },
+  "footer": {
+    "description": "A clearer way to discover services for your social presence.",
+    "explore": "Explore",
+    "follow": "Follow us",
+    "socialPending": "Social channels to be configured",
+    "copyright": "© {{year}} {{brand}}",
+    "rights": "All rights reserved."
+  },
+  "errors": {
+    "configTitle": "The store is unavailable",
+    "configText": "We could not load this store's configuration. Please try again later.",
+    "notFoundTitle": "We could not find that page",
+    "notFoundText": "The address may have changed or is no longer available."
+  },
+  "accessibility": {
+    "skip": "Skip to main content",
+    "external": "Opens in a new tab",
+    "primaryNav": "Primary navigation",
+    "footerNav": "Footer navigation"
+  }
+}
