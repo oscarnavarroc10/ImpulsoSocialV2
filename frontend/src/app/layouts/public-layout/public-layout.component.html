@@ -1,0 +1,115 @@
+<a class="skip-link" href="#main-content">{{ 'accessibility.skip' | transloco }}</a>
+<header class="site-header" (keydown)="handleKey($event)">
+  <div class="shell header-inner">
+    <app-brand-logo />
+    <button
+      #menuButton
+      class="menu-button"
+      type="button"
+      [attr.aria-expanded]="menuOpen()"
+      [attr.aria-label]="(menuOpen() ? 'common.close' : 'common.menu') | transloco"
+      (click)="toggleMenu()"
+    >
+      <app-icon [name]="menuOpen() ? 'close' : 'menu'" />
+    </button>
+    <nav
+      class="main-nav"
+      [class.is-open]="menuOpen()"
+      [attr.aria-label]="'accessibility.primaryNav' | transloco"
+    >
+      <a
+        routerLink="/"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        (click)="closeMenu()"
+        >{{ 'navigation.home' | transloco }}</a
+      >
+      <a routerLink="/services" routerLinkActive="active" (click)="closeMenu()">
+        {{ 'navigation.services' | transloco }}
+      </a>
+      <a routerLink="/" fragment="how-it-works" (click)="closeMenu()">
+        {{ 'navigation.howItWorks' | transloco }}
+      </a>
+      <a routerLink="/about" routerLinkActive="active" (click)="closeMenu()">
+        {{ 'navigation.about' | transloco }}
+      </a>
+      <a routerLink="/faq" routerLinkActive="active" (click)="closeMenu()">
+        {{ 'navigation.faq' | transloco }}
+      </a>
+      <div class="mobile-preference-actions">
+        <app-locale-switcher />
+        <app-theme-toggle />
+      </div>
+      <div class="mobile-auth-actions">
+        @if (auth.isAuthenticated()) {
+          <a class="button" routerLink="/cuenta" (click)="closeMenu()">
+            {{ 'common.myAccount' | transloco }}
+          </a>
+        } @else {
+          <a class="button button-ghost" routerLink="/login" (click)="closeMenu()">
+            {{ 'common.login' | transloco }}
+          </a>
+          <a class="button" routerLink="/registro" (click)="closeMenu()">
+            {{ 'common.register' | transloco }}
+          </a>
+        }
+      </div>
+    </nav>
+    <div class="header-actions">
+      <app-locale-switcher />
+      <app-theme-toggle />
+      <div class="desktop-auth-actions">
+        @if (auth.isAuthenticated()) {
+          <a class="button button-small" routerLink="/cuenta">{{
+            'common.myAccount' | transloco
+          }}</a>
+          <button class="button button-ghost button-small" type="button" (click)="logout()">
+            {{ 'common.logout' | transloco }}
+          </button>
+        } @else {
+          <a class="button button-ghost button-small login-action" routerLink="/login">
+            {{ 'common.login' | transloco }}
+          </a>
+          <a class="button button-small register-action" routerLink="/registro">
+            {{ 'common.register' | transloco }}
+          </a>
+        }
+      </div>
+    </div>
+  </div>
+</header>
+<main id="main-content"><router-outlet /></main>
+<footer class="site-footer">
+  <div class="shell footer-grid">
+    <div class="footer-brand">
+      <app-brand-logo />
+      <p>{{ 'footer.description' | transloco }}</p>
+    </div>
+    <nav class="footer-column" [attr.aria-label]="'accessibility.footerNav' | transloco">
+      <strong>{{ 'footer.explore' | transloco }}</strong>
+      <a routerLink="/services">{{ 'navigation.services' | transloco }}</a>
+      <a routerLink="/about">{{ 'navigation.about' | transloco }}</a>
+      <a routerLink="/faq">{{ 'navigation.faq' | transloco }}</a>
+    </nav>
+    <div class="footer-column">
+      <strong>{{ 'footer.follow' | transloco }}</strong>
+      @if (config.config()?.socialLinks?.instagramUrl; as instagram) {
+        <a [href]="instagram" target="_blank" rel="noopener noreferrer">
+          {{ 'common.instagram' | transloco }}
+        </a>
+      } @else {
+        <span>{{ 'footer.socialPending' | transloco }}</span>
+      }
+    </div>
+  </div>
+  <div class="shell footer-bottom">
+    <span>
+      {{
+        'footer.copyright'
+          | transloco: { year: currentYear, brand: config.config()?.brand?.name ?? '' }
+      }}
+    </span>
+    <span>{{ 'footer.rights' | transloco }}</span>
+  </div>
+</footer>
+<app-floating-social-actions />

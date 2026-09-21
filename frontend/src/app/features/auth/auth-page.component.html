@@ -1,0 +1,185 @@
+<main class="auth-page" [class.auth-page-register]="isRegister">
+  <a class="skip-link" href="#auth-form">{{ 'accessibility.skip' | transloco }}</a>
+  <div class="auth-topbar">
+    <app-brand-logo />
+    <a class="auth-back-link" routerLink="/">
+      {{ 'auth.backToStore' | transloco }}
+      <app-icon name="arrowRight" />
+    </a>
+  </div>
+
+  <div class="auth-layout">
+    <section id="auth-form" class="auth-card" aria-labelledby="auth-title">
+      <span class="eyebrow">
+        {{ (isRegister ? 'auth.registerEyebrow' : 'auth.loginEyebrow') | transloco }}
+      </span>
+      <h2 id="auth-title">
+        {{ (isRegister ? 'auth.registerTitle' : 'auth.loginTitle') | transloco }}
+      </h2>
+      <p class="auth-card-intro">
+        {{ (isRegister ? 'auth.registerIntro' : 'auth.loginIntro') | transloco }}
+      </p>
+
+      <div class="social-auth-grid">
+        @if (socialVisible('google')) {
+          <button class="social-auth-button" type="button" disabled>
+            <app-icon name="google" />
+            <span>{{ (isRegister ? 'auth.googleRegister' : 'auth.googleLogin') | transloco }}</span>
+          </button>
+        }
+        @if (socialVisible('apple')) {
+          <button class="social-auth-button social-auth-apple" type="button" disabled>
+            <app-icon name="apple" />
+            <span>{{ (isRegister ? 'auth.appleRegister' : 'auth.appleLogin') | transloco }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="auth-divider">
+        <span>{{ 'auth.orEmail' | transloco }}</span>
+      </div>
+
+      @if (errorKey(); as error) {
+        <div class="form-alert" role="alert"><app-icon name="alert" />{{ error | transloco }}</div>
+      }
+
+      @if (isRegister) {
+        <form [formGroup]="registerForm" (ngSubmit)="submitRegister()" novalidate>
+          <label class="form-field">
+            <span>{{ 'auth.name' | transloco }}</span>
+            <span class="input-shell">
+              <app-icon name="user" />
+              <input
+                formControlName="nombre"
+                autocomplete="name"
+                [placeholder]="'auth.namePlaceholder' | transloco"
+              />
+            </span>
+            @if (nameError(); as error) {
+              <small class="field-error">{{ error | transloco }}</small>
+            }
+          </label>
+          <label class="form-field">
+            <span>{{ 'auth.email' | transloco }}</span>
+            <span class="input-shell">
+              <app-icon name="mail" />
+              <input
+                formControlName="email"
+                type="email"
+                autocomplete="email"
+                [placeholder]="'auth.emailPlaceholder' | transloco"
+              />
+            </span>
+            @if (emailError('register'); as error) {
+              <small class="field-error">{{ error | transloco }}</small>
+            }
+          </label>
+          <label class="form-field">
+            <span>{{ 'auth.password' | transloco }}</span>
+            <span class="input-shell">
+              <app-icon name="lock" />
+              <input
+                formControlName="password"
+                [type]="showPassword() ? 'text' : 'password'"
+                autocomplete="new-password"
+                [placeholder]="'auth.passwordPlaceholder' | transloco"
+              />
+              <button
+                class="input-action"
+                type="button"
+                (click)="togglePassword()"
+                [attr.aria-label]="'auth.togglePassword' | transloco"
+              >
+                <app-icon name="eye" />
+              </button>
+            </span>
+            @if (passwordError('register'); as error) {
+              <small class="field-error">{{ error | transloco }}</small>
+            }
+          </label>
+          <label class="form-field">
+            <span>{{ 'auth.confirmPassword' | transloco }}</span>
+            <span class="input-shell">
+              <app-icon name="lock" />
+              <input
+                formControlName="confirmPassword"
+                [type]="showPassword() ? 'text' : 'password'"
+                autocomplete="new-password"
+                [placeholder]="'auth.confirmPasswordPlaceholder' | transloco"
+              />
+            </span>
+            @if (confirmationError(); as error) {
+              <small class="field-error">{{ error | transloco }}</small>
+            }
+          </label>
+          <label class="terms-field">
+            <input formControlName="terms" type="checkbox" />
+            <span>{{ 'auth.acceptTerms' | transloco }}</span>
+          </label>
+          @if (registerForm.controls.terms.touched && registerForm.controls.terms.invalid) {
+            <small class="field-error standalone-error">{{
+              'auth.validation.termsRequired' | transloco
+            }}</small>
+          }
+          <button class="button auth-submit" type="submit" [disabled]="auth.isBusy()">
+            {{ (auth.isBusy() ? 'auth.submitting' : 'auth.createAccount') | transloco }}
+            <app-icon name="arrowRight" />
+          </button>
+        </form>
+      } @else {
+        <form [formGroup]="loginForm" (ngSubmit)="submitLogin()" novalidate>
+          <label class="form-field">
+            <span>{{ 'auth.email' | transloco }}</span>
+            <span class="input-shell">
+              <app-icon name="mail" />
+              <input
+                formControlName="email"
+                type="email"
+                autocomplete="email"
+                [placeholder]="'auth.emailPlaceholder' | transloco"
+              />
+            </span>
+            @if (emailError('login'); as error) {
+              <small class="field-error">{{ error | transloco }}</small>
+            }
+          </label>
+          <label class="form-field">
+            <span>{{ 'auth.password' | transloco }}</span>
+            <span class="input-shell">
+              <app-icon name="lock" />
+              <input
+                formControlName="password"
+                [type]="showPassword() ? 'text' : 'password'"
+                autocomplete="current-password"
+                [placeholder]="'auth.passwordPlaceholder' | transloco"
+              />
+              <button
+                class="input-action"
+                type="button"
+                (click)="togglePassword()"
+                [attr.aria-label]="'auth.togglePassword' | transloco"
+              >
+                <app-icon name="eye" />
+              </button>
+            </span>
+            @if (passwordError('login'); as error) {
+              <small class="field-error">{{ error | transloco }}</small>
+            }
+          </label>
+          <button class="button auth-submit" type="submit" [disabled]="auth.isBusy()">
+            {{ (auth.isBusy() ? 'auth.submitting' : 'auth.loginAction') | transloco }}
+            <app-icon name="arrowRight" />
+          </button>
+        </form>
+      }
+
+      <p class="auth-switch">
+        {{ (isRegister ? 'auth.haveAccount' : 'auth.noAccount') | transloco }}
+        <a [routerLink]="isRegister ? '/login' : '/registro'">
+          {{ (isRegister ? 'common.login' : 'auth.registerFree') | transloco }}
+        </a>
+      </p>
+      <p class="auth-security"><app-icon name="check" />{{ 'auth.securityNote' | transloco }}</p>
+    </section>
+  </div>
+</main>

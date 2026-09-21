@@ -17,23 +17,27 @@ tandas verificables:
 No se ejecutarán comandos de Spec Kit. Los documentos ya contienen las
 decisiones necesarias.
 
+Antes de editar T002–T005 es obligatorio leer completamente
+`design-contract.md`. Sus tokens, límites tipográficos, blueprint, prohibiciones
+y criterios de confiabilidad no son sugerencias.
+
 ## 2. Decisiones técnicas
 
-| Área | Decisión |
-|---|---|
-| Framework | Angular 22 standalone |
-| Lenguaje | TypeScript strict |
-| Estilos | SCSS propio + variables CSS semánticas |
-| UI framework | Ninguno en esta feature |
-| Estado local | Angular Signals |
-| Asincronía/HTTP | RxJS + `HttpClient` |
-| Formularios | Reactive Forms tipados |
-| Rutas | Angular Router con lazy loading |
-| i18n runtime | `@jsverse/transloco` |
-| Tests | Vitest mediante `ng test` |
-| Persistencia segura | `sessionStorage` para sesión |
-| Preferencias no sensibles | `localStorage` para tema/locale |
-| Desarrollo API | Proxy `/api` → `http://localhost:3000` |
+| Área                      | Decisión                               |
+| ------------------------- | -------------------------------------- |
+| Framework                 | Angular 22 standalone                  |
+| Lenguaje                  | TypeScript strict                      |
+| Estilos                   | SCSS propio + variables CSS semánticas |
+| UI framework              | Ninguno en esta feature                |
+| Estado local              | Angular Signals                        |
+| Asincronía/HTTP           | RxJS + `HttpClient`                    |
+| Formularios               | Reactive Forms tipados                 |
+| Rutas                     | Angular Router con lazy loading        |
+| i18n runtime              | `@jsverse/transloco`                   |
+| Tests                     | Vitest mediante `ng test`              |
+| Persistencia segura       | `sessionStorage` para sesión           |
+| Preferencias no sensibles | `localStorage` para tema/locale        |
+| Desarrollo API            | Proxy `/api` → `http://localhost:3000` |
 
 No agregar NgRx, Tailwind, Bootstrap, Angular Material, jQuery, librerías de
 componentes, carousel, animación o estado. La storefront debe tener identidad
@@ -77,6 +81,10 @@ frontend/
 │   └── styles/
 │       ├── _reset.scss
 │       ├── _tokens.scss
+│       ├── _base.scss
+│       ├── _layout.scss
+│       ├── _components.scss
+│       ├── _pages.scss
 │       ├── _utilities.scss
 │       └── _responsive.scss
 ├── proxy.conf.json
@@ -87,6 +95,10 @@ frontend/
 
 Nombres equivalentes son aceptables únicamente si conservan las fronteras. No
 crear carpetas `services/`, `helpers/` o `components/` globales sin dominio.
+
+`src/styles.scss` sólo importa las capas anteriores. Las páginas y layouts no
+pueden declarar `styles`, `styleUrl`, `<style>` ni atributos `style`. Toda marca
+usa variables CSS semánticas provenientes de la configuración validada.
 
 ## 4. Configuración white-label en runtime
 
@@ -124,6 +136,10 @@ success
 warning
 danger
 focus
+heroStart
+heroEnd
+authSurface
+authText
 ```
 
 Convertirlas a variables:
@@ -141,34 +157,68 @@ la allow-list anterior mediante `style.setProperty`.
 
 ### 4.3 Configuración inicial
 
-ImpulsoSocial parte de:
+ImpulsoSocial parte de los cuatro presets documentados en
+`design-contract.md`:
 
-- claro: fondo gris muy claro, superficie blanca, texto azul-negro;
-- oscuro: fondo azul profundo, superficies elevadas discretas;
-- primario violeta;
-- secundario azul;
-- acento coral/rosa usado con moderación;
-- radios entre 12 y 20 px;
-- sombras suaves, nunca glow excesivo;
-- tipografía de sistema, sin descarga externa.
+- tema inicial `light`, independientemente del tema del sistema;
+- preset inicial `spotify`, con la dirección clara Aurora y verde comercial;
+- presets `minimal`, `x` e `instagram`, cada uno con paleta clara y oscura;
+- magenta/naranja permitido sólo en `instagram`; ningún preset usa negro puro,
+  neón, glow o sombras de color. El degradado semántico construido con
+  `heroStart`/`heroEnd` se limita a hero, bienvenida de cuenta y lienzo auth;
+- radios derivados del preset mediante `data-theme-preset`;
+- una escala de sombras neutras y suaves;
+- tipografía sans-serif de sistema, sin descarga externa ni serif.
 
 Crear wordmark SVG/local o fallback de texto. No descargar ni hotlinkear logos.
 
+### 4.4 Arranque y recuperación
+
+El initializer resuelve dependencias mediante `inject()` de forma sincrónica
+antes de cualquier `await`. Después ejecuta en orden:
+
+1. `TenantConfigService.load()`;
+2. si el resultado es válido, `ThemeService.initialize()`;
+3. si el resultado es válido, `LocaleService.initialize()`;
+4. publicación atómica de estado `ready`.
+
+`TenantConfigService` mantiene un estado discriminado `loading | ready |
+configurationError`, es idempotente y permite retry. Ningún error esperado sale
+como rechazo sin manejar. La shell representa loading y error; no existe una
+rama que renderice vacío.
+
+La prueba no puede limitarse a crear `App`. Debe ejecutar los providers reales
+de `appConfig` mediante `ApplicationInitStatus`, bootstrap equivalente o un
+harness que atraviese el initializer asíncrono.
+
 ## 5. Temas
 
-`ThemeService` expone signals de preferencia y tema efectivo:
+`ThemeService` expone signals de preferencia, preset y tema efectivo:
 
 ```ts
-preference: Signal<'light' | 'dark' | 'system'>
-effectiveTheme: Signal<'light' | 'dark'>
+preference: Signal<"light" | "dark" | "system">;
+effectiveTheme: Signal<"light" | "dark">;
+preset: Signal<string>;
+presets: Signal<readonly ThemePresetConfig[]>;
 ```
 
 - escuchar `prefers-color-scheme` sólo en modo `system`;
 - retirar listener al destruir;
 - persistir preferencia validada;
-- aplicar tokens del tenant y `data-theme` en `<html>`;
+- validar, aplicar y persistir el preset por separado;
+- volver a `defaultPreset` si el valor almacenado dejó de existir;
+- exponer un control accesible para elegir `light`, `dark` o `system`, mostrando
+  la preferencia seleccionada y no sólo el tema efectivo;
+- exponer un selector accesible con labels traducidos para los presets
+  configurados, sin lista hardcodeada dentro del componente;
+- aplicar tokens del tenant, `data-theme` y `data-theme-preset` en `<html>`;
 - actualizar `color-scheme`;
 - no provocar flash claro antes del oscuro en condiciones normales.
+- namespaciar storage con `tenantSlug` y tolerar `SecurityError`/storage no
+  disponible;
+- conservar una referencia estable del listener y eliminarla al cambiar de
+  `system` a modo explícito o al destruir el servicio;
+- hacer `initialize()` idempotente, sin registrar listeners duplicados.
 
 ## 6. Internacionalización
 
@@ -198,6 +248,13 @@ Ambos archivos deben contener el mismo conjunto de claves. Crear una prueba que
 compare recursivamente las rutas de claves. Prohibido mostrar la clave si falta
 traducción.
 
+La paridad también compara tipos primitivos y longitudes/estructura de arrays.
+Todo texto visible o accesible usa traducciones, incluidos `aria-label`,
+`title`, loading, paginación, retry, navegación y estados fatales. El loader
+intenta `es-MX` si falla un idioma secundario; si falla también el fallback,
+publica una copia crítica mínima y legible en vez de propagar una pantalla
+vacía.
+
 `LocaleService` valida la preferencia contra `TenantUiConfig`, actualiza
 Transloco y `document.documentElement.lang`, y expone el locale activo para
 formatters.
@@ -223,6 +280,11 @@ tipados, estado de foco/disabled y prueba del comportamiento importante.
 Los iconos deben ser SVG locales pequeños con `currentColor`. No usar emoji como
 iconografía principal ni fuentes de iconos externas.
 
+La configuración sólo aporta una `IconKey` validada contra la allow-list de
+`design-contract.md`. No acepta markup, URL arbitraria o carácter visual como
+icono. Debe eliminarse la iconografía actual basada en `✦`, `◎`, `♡`, `↗`,
+`◌`, `♪`, `☼` y equivalentes.
+
 ## 8. Layout público
 
 El layout contiene header, `<main>` y footer comunes.
@@ -242,8 +304,21 @@ Móvil:
 - Escape cierra y devuelve el foco al botón;
 - CTA principal visible sin saturar.
 
-El estado autenticado cambia las acciones por saludo/nombre y logout, pero no
-crea un dashboard ficticio.
+El estado autenticado cambia las acciones por cuenta y logout. `/cuenta`
+muestra usuario real de la sesión, accesos al catálogo y funciones futuras
+deshabilitadas; nunca inventa saldo, órdenes, estadísticas o actividad.
+
+La landing y el layout siguen el blueprint exacto de `design-contract.md`. En
+particular, el hero usa sans-serif, máximo 64 px, CTAs dentro del primer viewport
+y una segunda columna basada sólo en configuración real. Se eliminan el numeral
+decorativo, la composición editorial vacía y cualquier elemento
+violeta/naranja/neón. Aurora claro es el modo inicial; el modo oscuro conserva
+la misma jerarquía y densidad sin reproducir el panel técnico de un proveedor.
+
+Las rutas canónicas `/login`, `/registro` y `/cuenta` se implementan en T007.
+`/auth/login` y `/auth/register` se conservan como redirects compatibles. Hasta
+T008, `/services` muestra un placeholder traducido y honesto; nunca se resuelve
+mediante el wildcard 404. El wildcard permanece al final del shell público.
 
 ## 9. Cliente HTTP
 
@@ -272,8 +347,14 @@ Definir `ApiError` normalizado:
 ```ts
 interface ApiError {
   status: number;
-  code: 'validation' | 'unauthorized' | 'conflict' | 'notFound' |
-        'network' | 'server' | 'unknown';
+  code:
+    | "validation"
+    | "unauthorized"
+    | "conflict"
+    | "notFound"
+    | "network"
+    | "server"
+    | "unknown";
   fieldErrors?: Readonly<Record<string, string>>;
 }
 ```
@@ -420,8 +501,8 @@ Usar Vitest y TestBed. Mínimo 40 pruebas nuevas/reemplazadas, repartidas entre:
 
 1. validación y fallo cerrado de tenant config;
 2. aplicación de tokens permitidos;
-3. tema system/light/dark y persistencia;
-4. locales soportados, fallback y paridad de traducciones;
+3. tema system/light/dark, presets, fallback y persistencia;
+4. locales soportados, fallback, paridad y resolución de toda clave dinámica;
 5. almacenamiento de sesión corrupto/normal/vacío;
 6. auth login/register/logout/refresh y errores;
 7. interceptor: alcance de host, exclusiones, bearer, single-flight, retry único
@@ -433,6 +514,11 @@ Usar Vitest y TestBed. Mínimo 40 pruebas nuevas/reemplazadas, repartidas entre:
 12. landing: config dinámica, métodos próximamente y links condicionales;
 13. navegación/menú accesible y contenido esencial.
 
+El punto de control A exige al menos 25 de esas pruebas antes de T006. Debe
+incluir el initializer real, error/retry de configuración, tema/storage/listener,
+locale/fallback/paridad, shell/menú y landing. Las tres pruebas starter actuales
+no satisfacen este requisito.
+
 No se exige pixel-perfect screenshot testing ni llamadas reales a backend.
 
 ## 15. Archivos permitidos
@@ -441,7 +527,7 @@ Sólo pueden modificarse:
 
 ```text
 frontend/**
-specs/011-angular-foundation-auth-catalog/tasks.md
+specs/011-angular-foundation-auth-catalog/**
 ```
 
 `frontend/node_modules/`, `frontend/dist/` y `frontend/.angular/` deben seguir
@@ -479,6 +565,9 @@ es-MX
 en
 backend disponible
 backend detenido
+initializer exitoso sin errores de consola
+config 404/invalid y retry exitoso
+zoom de navegador al 200 % en la ruta principal
 ```
 
 ## 17. Condiciones obligatorias de parada
@@ -498,6 +587,15 @@ El agente debe detenerse sin improvisar si:
 - pretende desactivar tests, presupuestos de bundle o validación;
 - build, tests o `git diff --check` falla;
 - se modifican archivos fuera de la allow-list;
+- se deja cualquier `inject()` después de un `await`/callback asíncrono en el
+  initializer;
+- un fallo esperado produce pantalla blanca, clave de traducción o error técnico;
+- se usan magenta/naranja fuera de Instagram, negro puro, neón, glow, gradiente
+  en botones/texto/formularios o serif;
+- una clave de traducción dinámica aparece cruda en pantalla;
+- se introduce estilo inline/local de página o iconografía Unicode/emoji;
+- el tema inicial depende de `prefers-color-scheme` en lugar de iniciar claro;
+- faltan los 25 tests del punto de control A o la validación manual requerida;
 - la implementación supera 55 archivos creados/modificados sin contar JSON de
   traducciones, assets y `tasks.md`.
 

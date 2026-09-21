@@ -1,0 +1,117 @@
+<div class="account-layout">
+  <aside class="account-sidebar">
+    <app-brand-logo />
+    <span class="account-nav-label">{{ 'account.yourAccount' | transloco }}</span>
+    <nav [attr.aria-label]="'account.navigation' | transloco">
+      <a class="active" routerLink="/cuenta"
+        ><app-icon name="home" />{{ 'account.summary' | transloco }}</a
+      >
+      <a routerLink="/services"
+        ><app-icon name="instagram" />{{ 'navigation.services' | transloco }}</a
+      >
+      <span aria-disabled="true"
+        ><app-icon name="orders" />{{ 'account.ordersSoon' | transloco }}</span
+      >
+      <span aria-disabled="true"
+        ><app-icon name="wallet" />{{ 'account.walletSoon' | transloco }}</span
+      >
+      <a routerLink="/faq"><app-icon name="support" />{{ 'account.support' | transloco }}</a>
+    </nav>
+    <div class="account-profile-mini">
+      <span class="account-avatar">{{ initials() }}</span>
+      <span
+        ><strong>{{ auth.user()?.nombre }}</strong
+        ><small>{{ auth.user()?.email }}</small></span
+      >
+    </div>
+  </aside>
+
+  <main class="account-main">
+    <header class="account-topbar">
+      <div>
+        <span>{{ 'account.welcome' | transloco }}</span>
+        <strong>{{ auth.user()?.nombre }}</strong>
+      </div>
+      <div class="account-topbar-actions">
+        <app-locale-switcher />
+        <app-theme-toggle />
+        <button
+          class="icon-button"
+          type="button"
+          (click)="logout()"
+          [attr.aria-label]="'common.logout' | transloco"
+        >
+          <app-icon name="logout" />
+        </button>
+      </div>
+    </header>
+
+    <div class="account-content">
+      <section class="account-welcome">
+        <div>
+          <span class="eyebrow">{{ 'account.eyebrow' | transloco }}</span>
+          <h1>{{ 'account.title' | transloco }}</h1>
+          <p>{{ 'account.intro' | transloco }}</p>
+        </div>
+        <a class="button" routerLink="/services"
+          >{{ 'account.explore' | transloco }}<app-icon name="arrowRight"
+        /></a>
+      </section>
+
+      <div class="account-grid">
+        <section class="account-card account-profile-card">
+          <span class="eyebrow">{{ 'account.profileEyebrow' | transloco }}</span>
+          <h2>{{ 'account.profileTitle' | transloco }}</h2>
+          <dl>
+            <div>
+              <dt>{{ 'auth.name' | transloco }}</dt>
+              <dd>{{ auth.user()?.nombre }}</dd>
+            </div>
+            <div>
+              <dt>{{ 'auth.email' | transloco }}</dt>
+              <dd>{{ auth.user()?.email }}</dd>
+            </div>
+            <div>
+              <dt>{{ 'account.role' | transloco }}</dt>
+              <dd>{{ auth.user()?.rol }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="account-card account-next-card">
+          <span class="eyebrow">{{ 'account.nextEyebrow' | transloco }}</span>
+          <h2>{{ 'account.nextTitle' | transloco }}</h2>
+          <p>{{ 'account.nextText' | transloco }}</p>
+          <div class="account-quick-actions">
+            <a routerLink="/services"
+              ><app-icon name="instagram" />{{ 'account.viewCatalog' | transloco
+              }}<app-icon name="arrowRight"
+            /></a>
+            <a routerLink="/faq"
+              ><app-icon name="support" />{{ 'account.getHelp' | transloco
+              }}<app-icon name="arrowRight"
+            /></a>
+          </div>
+        </section>
+      </div>
+
+      <section class="account-coming-soon" aria-labelledby="account-coming-title">
+        <div>
+          <span class="eyebrow">{{ 'account.yourAccount' | transloco }}</span>
+          <h2 id="account-coming-title">{{ 'account.comingTitle' | transloco }}</h2>
+          <p>{{ 'account.comingText' | transloco }}</p>
+        </div>
+        <div class="account-future-grid">
+          @for (key of ['orders', 'wallet', 'tracking']; track key) {
+            <article>
+              <app-icon [name]="key === 'wallet' ? 'wallet' : 'orders'" /><strong>{{
+                'account.future.' + key + '.title' | transloco
+              }}</strong
+              ><span>{{ 'account.future.' + key + '.text' | transloco }}</span>
+            </article>
+          }
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
