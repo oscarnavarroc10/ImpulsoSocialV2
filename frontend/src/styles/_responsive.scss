@@ -432,9 +432,10 @@
   }
 
   .account-topbar {
+    --mobile-header-control-height: 36px;
     min-height: 58px;
-    gap: 12px;
-    padding: max(10px, env(safe-area-inset-top)) 14px 10px;
+    gap: 5px;
+    padding: max(10px, env(safe-area-inset-top)) 6px 10px;
   }
 
   .account-identity {
@@ -452,14 +453,17 @@
 
   .account-mobile-brand {
     display: inline-flex;
+    height: var(--mobile-header-control-height);
     min-width: 0;
-    max-width: min(44vw, 168px);
+    max-width: min(24vw, 180px);
+    align-items: center;
     overflow: hidden;
   }
 
   .account-mobile-brand .brand-image {
-    max-width: min(44vw, 168px);
-    height: 34px;
+    max-width: min(24vw, 180px);
+    height: var(--mobile-header-control-height);
+    object-fit: contain;
   }
 
   .account-identity {
@@ -471,15 +475,51 @@
     order: 2;
   }
 
-  .account-mobile-avatar {
-    order: 3;
+  .account-mobile-theme-control {
     display: grid;
+    order: 3;
+    width: auto;
+    height: var(--mobile-header-control-height);
+    min-height: var(--mobile-header-control-height);
+    flex: 0 0 auto;
+    padding-inline: 2px;
+    place-items: center;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background: var(--color-surface);
+  }
+
+  .account-mobile-theme-control .theme-switcher,
+  .account-mobile-theme-control .theme-segment {
+    border: 0;
+    background: transparent;
+  }
+
+  .account-mobile-theme-control .theme-switcher {
+    padding: 0;
+  }
+
+  .account-mobile-theme-control .theme-segment {
+    padding: 0;
+  }
+
+  .account-mobile-theme-control .theme-segment button {
+    min-height: 30px;
+    padding: 0 5px;
+  }
+
+  .account-mobile-theme-control .theme-segment .icon {
+    width: 18px;
+    height: 18px;
   }
 
   .account-mobile-avatar {
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
+    order: 4;
+    display: grid;
+    width: var(--mobile-header-control-height);
+    height: var(--mobile-header-control-height);
+    min-height: var(--mobile-header-control-height);
+    flex: 0 0 var(--mobile-header-control-height);
     place-items: center;
     border: 1px solid var(--color-border);
     border-radius: 50%;
@@ -497,20 +537,36 @@
 
   .account-topbar-balance {
     width: auto;
-    min-width: 94px;
+    height: var(--mobile-header-control-height);
+    min-width: 0;
+    min-height: var(--mobile-header-control-height);
+    flex: 0 0 auto;
+    gap: 5px;
     margin-left: 0;
-    padding-left: 12px;
+    padding: 4px 24px 4px 7px;
   }
 
-  .account-topbar-balance span {
-    font-size: 0.7rem;
-    white-space: nowrap;
+  .account-topbar-balance__label--desktop {
+    display: none;
+  }
+
+  .account-topbar-balance__label--mobile {
+    display: inline;
+    font-size: 0.68rem;
   }
 
   .account-topbar-balance strong {
-    overflow: hidden;
-    text-overflow: ellipsis;
+    flex: 0 0 auto;
+    font-size: 0.76rem;
+    overflow: visible;
     white-space: nowrap;
+  }
+
+  .account-topbar-balance__add {
+    right: 6px;
+    width: 19px;
+    height: 19px;
+    font-size: 0.9rem;
   }
 
   .account-content {

@@ -453,6 +453,11 @@
   color: var(--color-text);
 }
 
+.customer-order-steps li.is-complete {
+  border-color: var(--color-success);
+  color: var(--color-text);
+}
+
 .customer-order-steps b {
   display: grid;
   width: 22px;
@@ -468,6 +473,16 @@
 .customer-order-steps .is-current b {
   background: var(--color-primary);
   color: var(--color-primary-contrast);
+}
+
+.customer-order-steps .is-complete b {
+  background: var(--color-success);
+  color: var(--color-primary-contrast);
+}
+
+.customer-order-steps b .icon {
+  width: 13px;
+  height: 13px;
 }
 
 .customer-order-steps li > span {
@@ -888,13 +903,16 @@
 
 .account-desktop-profile {
   display: inline-flex;
+  height: 48px;
   min-width: 0;
   align-items: center;
   gap: 9px;
-  padding: 4px 8px 4px 4px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-control);
-  background: transparent;
+  box-sizing: border-box;
+  padding: 3px 8px 3px 4px;
+  min-height: 48px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
   color: var(--color-text);
   cursor: pointer;
   font: inherit;
@@ -905,6 +923,14 @@
 .account-desktop-profile.is-active {
   border-color: var(--color-border);
   background: var(--color-surface-elevated);
+}
+
+.account-desktop-profile > .icon {
+  width: 15px;
+  height: 15px;
+  margin-left: 2px;
+  color: var(--color-text-muted);
+  transform: rotate(90deg);
 }
 
 .account-desktop-profile__copy {
@@ -1804,23 +1830,23 @@
   display: flex;
   height: 100vh;
   flex-direction: column;
-  padding: 28px 22px;
+  padding: 32px 20px 20px;
   border-right: 1px solid var(--color-border);
   background: var(--color-surface);
 }
 
 .account-nav-label {
-  margin: 46px 10px 10px;
+  margin: 42px 10px 10px;
   color: var(--color-text-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .account-sidebar nav {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .account-menu-button {
@@ -1830,14 +1856,38 @@
 .account-sidebar nav a,
 .account-sidebar nav span {
   display: flex;
-  min-height: 48px;
+  min-height: 44px;
   align-items: center;
-  gap: 12px;
-  padding: 0 13px;
-  border-radius: var(--radius-control);
+  gap: 11px;
+  padding: 0 12px;
+  border-radius: 9px;
   color: var(--color-text-muted);
-  font-weight: 700;
+  font-size: 0.88rem;
+  font-weight: 550;
   text-decoration: none;
+}
+
+.account-sidebar nav a .icon {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+}
+
+.account-sidebar > .brand {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  align-self: center;
+  justify-content: center;
+  min-height: 38px;
+}
+
+.account-sidebar > .brand .brand-image {
+  width: auto;
+  max-width: min(100%, 210px);
+  height: 42px;
+  object-fit: contain;
+  object-position: left center;
 }
 
 .account-sidebar nav a:hover,
@@ -1847,7 +1897,7 @@
 }
 
 .account-sidebar nav a.active {
-  box-shadow: inset 3px 0 0 var(--color-primary);
+  box-shadow: inset 2px 0 0 var(--color-primary);
 }
 
 .account-sidebar nav span[aria-disabled='true'] {
@@ -1857,9 +1907,9 @@
 .account-profile-mini {
   display: grid;
   align-items: center;
-  gap: 11px;
+  gap: 10px;
   margin-top: auto;
-  padding: 12px 8px;
+  padding: 16px 6px 4px;
   border-top: 1px solid var(--color-border);
   grid-template-columns: auto minmax(0, 1fr);
 }
@@ -1870,8 +1920,8 @@
 
 .account-avatar {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border-radius: 50%;
   background: var(--color-primary);
@@ -1889,6 +1939,7 @@
 
 .account-profile-mini small {
   color: var(--color-text-muted);
+  font-size: 0.76rem;
 }
 
 .account-main {
@@ -1900,11 +1951,11 @@
   z-index: 10;
   top: 0;
   display: flex;
-  min-height: 76px;
+  min-height: 72px;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding: max(12px, env(safe-area-inset-top)) 34px 12px;
+  gap: 20px;
+  padding: max(10px, env(safe-area-inset-top)) 32px 10px;
   border-bottom: 1px solid var(--color-border);
   background: color-mix(in srgb, var(--color-surface) 94%, transparent);
   backdrop-filter: blur(14px);
@@ -1923,24 +1974,102 @@
 .account-topbar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+
+.account-mobile-theme-control {
+  display: none;
+}
+
+.account-toolbar-control {
+  display: flex;
+  height: 48px;
+  min-height: 48px;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.account-toolbar-control:hover,
+.account-toolbar-control:focus-within {
+  border-color: var(--color-primary);
+  background: var(--color-surface-elevated);
+}
+
+.account-toolbar-control .locale-control,
+.account-toolbar-control .theme-switcher,
+.account-toolbar-control .theme-segment {
+  border: 0;
+  background: transparent;
+}
+
+.account-toolbar-control .locale-control,
+.account-toolbar-control .theme-switcher {
+  padding: 0;
+}
+
+.account-toolbar-control .locale-control button,
+.account-toolbar-control .theme-segment button {
+  min-height: 34px;
+  padding-inline: 8px;
+  font-size: 0.76rem;
+}
+
+.account-toolbar-control--appearance .theme-switcher {
+  gap: 0;
+}
+
+.account-toolbar-control--appearance .theme-segment {
+  gap: 2px;
 }
 
 .account-topbar-balance {
-  display: grid;
-  min-width: 132px;
-  gap: 2px;
-  padding-left: 20px;
-  border-left: 1px solid var(--color-border);
+  display: flex;
+  position: relative;
+  height: 48px;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 142px;
+  min-height: 48px;
+  gap: 8px;
+  margin-left: auto;
+  padding: 6px 34px 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.account-topbar-balance:hover,
+.account-topbar-balance:focus-visible {
+  border-color: var(--color-primary);
+  background: var(--color-surface-elevated);
+  outline: 0;
 }
 
 .account-topbar-balance span {
   color: var(--color-text-muted);
   font-size: 0.75rem;
   font-weight: 750;
+  white-space: nowrap;
+}
+
+.account-topbar-balance__label--mobile {
+  display: none;
 }
 
 .account-topbar-balance strong {
+  font-size: 0.98rem;
   white-space: nowrap;
 }
 
@@ -1949,10 +2078,165 @@
   font-size: 0.85rem;
 }
 
+.account-topbar-balance__add {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  color: var(--color-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
 .account-content {
   width: min(1160px, calc(100% - 64px));
   margin-inline: auto;
   padding: 54px 0 80px;
+}
+
+.account-profile-popover-layer {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  pointer-events: none;
+}
+
+.account-profile-popover-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.account-profile-popover {
+  position: absolute;
+  top: 80px;
+  right: 24px;
+  z-index: 1;
+  display: grid;
+  width: min(320px, calc(100vw - 32px));
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
+  pointer-events: auto;
+}
+
+.account-profile-popover__header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.account-profile-popover__header span,
+.account-profile-popover__header strong,
+.account-profile-popover__header small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-profile-popover__header span {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+
+.account-profile-popover__header strong {
+  margin-top: 2px;
+  font-size: 0.95rem;
+}
+
+.account-profile-popover__header small {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+}
+
+.account-profile-menu__link,
+.account-profile-menu__control {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: 8px;
+}
+
+.account-profile-menu__link {
+  color: var(--color-text);
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.account-profile-menu__link:hover,
+.account-profile-menu__link:focus-visible {
+  background: var(--color-surface-elevated);
+}
+
+.account-profile-menu__link .icon:last-child {
+  width: 16px;
+  margin-left: auto;
+}
+
+.account-profile-menu__control {
+  justify-content: space-between;
+  border-top: 1px solid var(--color-border);
+}
+
+.account-profile-menu__control > span {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.account-profile-menu__control .theme-switcher,
+.account-profile-menu__control .locale-control {
+  flex: 0 1 auto;
+}
+
+.account-profile-menu__control .theme-segment button,
+.account-profile-menu__control .locale-control button {
+  min-height: 30px;
+  padding-inline: 7px;
+  font-size: 0.72rem;
+}
+
+.account-profile-popover .account-mobile-sheet__logout {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-start;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-danger);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.86rem;
+}
+
+.account-profile-popover .account-mobile-sheet__logout:hover,
+.account-profile-popover .account-mobile-sheet__logout:focus-visible {
+  background: var(--color-surface-elevated);
 }
 
 .account-mobile-brand,

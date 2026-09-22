@@ -5,6 +5,7 @@ import {
   effect,
   ElementRef,
   HostListener,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -36,22 +37,49 @@ import { IconComponent } from '../../shared/ui/icon.component';
       </div>
     </section>
     <ol class="customer-order-steps" [attr.aria-label]="'account.orderFlow' | transloco">
-      <li class="is-current">
-        <b aria-hidden="true">1</b>
+      <li
+        [class.is-current]="stepStatus(1) === 'current'"
+        [class.is-complete]="stepStatus(1) === 'complete'"
+      >
+        <b aria-hidden="true">
+          @if (stepStatus(1) === 'complete') {
+            <app-icon name="check" />
+          } @else {
+            1
+          }
+        </b>
         <span>
           <strong>{{ 'account.orderStepSelect' | transloco }}</strong>
           <small>{{ 'account.orderStepSelectDescription' | transloco }}</small>
         </span>
       </li>
-      <li>
-        <b aria-hidden="true">2</b>
+      <li
+        [class.is-current]="stepStatus(2) === 'current'"
+        [class.is-complete]="stepStatus(2) === 'complete'"
+      >
+        <b aria-hidden="true">
+          @if (stepStatus(2) === 'complete') {
+            <app-icon name="check" />
+          } @else {
+            2
+          }
+        </b>
         <span>
           <strong>{{ 'account.orderStepConfigure' | transloco }}</strong>
           <small>{{ 'account.orderStepConfigureDescription' | transloco }}</small>
         </span>
       </li>
-      <li>
-        <b aria-hidden="true">3</b>
+      <li
+        [class.is-current]="stepStatus(3) === 'current'"
+        [class.is-complete]="stepStatus(3) === 'complete'"
+      >
+        <b aria-hidden="true">
+          @if (stepStatus(3) === 'complete') {
+            <app-icon name="check" />
+          } @else {
+            3
+          }
+        </b>
         <span>
           <strong>{{ 'account.orderStepConfirm' | transloco }}</strong>
           <small>{{ 'account.orderStepConfirmDescription' | transloco }}</small>
@@ -386,6 +414,7 @@ export class CustomerNewOrderComponent {
   protected readonly serviceSearch = signal('');
   protected readonly categoryOpen = signal(false);
   protected readonly serviceOpen = signal(false);
+  private readonly formRevision = signal(0);
   protected readonly categoryActiveIndex = signal(0);
   protected readonly serviceActiveIndex = signal(0);
   protected readonly pickerPosition = signal({ top: 0, left: 0, width: 0 });
@@ -402,6 +431,23 @@ export class CustomerNewOrderComponent {
     ],
     quantity: ['', [Validators.required, Validators.pattern(/^\d+$/), Validators.min(1)]],
   });
+  protected readonly selectionComplete = computed(() => {
+    this.formRevision();
+    return Boolean(
+      this.form.controls.socialNetwork.value &&
+      this.form.controls.categoryId.value &&
+      this.form.controls.serviceId.value &&
+      this.service(),
+    );
+  });
+  protected readonly configurationComplete = computed(() => {
+    this.formRevision();
+    return (
+      this.selectionComplete() &&
+      this.form.controls.target.valid &&
+      this.form.controls.quantity.valid
+    );
+  });
 
   constructor() {
     effect(() => {
@@ -411,6 +457,10 @@ export class CustomerNewOrderComponent {
       );
     });
     this.destroyRef.onDestroy(() => document.body.classList.remove('customer-mobile-picker-open'));
+    const formSubscription = this.form.valueChanges.subscribe(() =>
+      this.formRevision.update((revision) => revision + 1),
+    );
+    this.destroyRef.onDestroy(() => formSubscription.unsubscribe());
     const id = this.route.snapshot.queryParamMap.get('serviceId');
     this.catalog.list({ page: 1, limit: 100 }).subscribe((result) => {
       if (!result.response) {
@@ -681,6 +731,15 @@ export class CustomerNewOrderComponent {
 
   protected selectedNetworkLabel(): string {
     return this.selectedNetwork()?.label ?? '—';
+  }
+
+  protected stepStatus(step: 1 | 2 | 3): 'current' | 'complete' | 'upcoming' {
+    if (step === 1) return this.selectionComplete() ? 'complete' : 'current';
+    if (step === 2) {
+      if (!this.selectionComplete()) return 'upcoming';
+      return this.configurationComplete() ? 'complete' : 'current';
+    }
+    return this.configurationComplete() ? 'current' : 'upcoming';
   }
 
   protected priceLabel(): string {

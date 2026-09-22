@@ -71,11 +71,18 @@
       >
         {{ initials() }}
       </button>
-      <div
+      <a
         class="account-topbar-balance"
+        routerLink="/cuenta/saldo"
         [class.is-unavailable]="balanceStore.state() === 'unavailable'"
+        [attr.aria-label]="'account.wallet' | transloco"
       >
-        <span>{{ 'account.currentBalance' | transloco }}</span>
+        <span class="account-topbar-balance__label account-topbar-balance__label--desktop">{{
+          'account.currentBalance' | transloco
+        }}</span>
+        <span class="account-topbar-balance__label account-topbar-balance__label--mobile">{{
+          'account.mobileBalance' | transloco
+        }}</span>
         @if (balanceStore.state() === 'loading') {
           <strong>{{ 'account.walletLoading' | transloco }}</strong>
         } @else if (balanceStore.state() === 'ready' && balanceStore.balance(); as wallet) {
@@ -86,10 +93,18 @@
         } @else {
           <strong>{{ 'account.balanceUnavailableShort' | transloco }}</strong>
         }
+        <span class="account-topbar-balance__add" aria-hidden="true">+</span>
+      </a>
+      <div class="account-mobile-theme-control">
+        <app-theme-toggle [appearanceOnly]="true" [iconOnly]="true" />
       </div>
       <div class="account-topbar-actions">
-        <app-locale-switcher />
-        <app-theme-toggle />
+        <div class="account-toolbar-control account-toolbar-control--language">
+          <app-locale-switcher />
+        </div>
+        <div class="account-toolbar-control account-toolbar-control--appearance">
+          <app-theme-toggle [appearanceOnly]="true" />
+        </div>
         <button
           class="account-desktop-profile"
           type="button"
@@ -102,16 +117,8 @@
           <span class="account-avatar">{{ initials() }}</span>
           <span class="account-desktop-profile__copy">
             <strong>{{ auth.user()?.nombre }}</strong>
-            <small>{{ 'account.profileTitle' | transloco }}</small>
           </span>
-        </button>
-        <button
-          class="icon-button"
-          type="button"
-          (click)="logout()"
-          [attr.aria-label]="'common.logout' | transloco"
-        >
-          <app-icon name="logout" />
+          <app-icon name="arrowRight" />
         </button>
       </div>
     </header>
@@ -228,8 +235,8 @@
           ><app-locale-switcher />
         </div>
         <div class="account-profile-menu__control" role="group">
-          <span>{{ 'common.appearance' | transloco }}</span
-          ><app-theme-toggle />
+          <span>{{ 'common.theme' | transloco }}</span
+          ><app-theme-toggle [personalityOnly]="true" />
         </div>
         <button
           class="account-mobile-sheet__logout"

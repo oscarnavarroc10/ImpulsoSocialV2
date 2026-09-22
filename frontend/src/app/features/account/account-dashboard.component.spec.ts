@@ -49,6 +49,9 @@ describe('AccountDashboardComponent', () => {
     expect(host.querySelector('.account-welcome')).toBeNull();
     expect(host.querySelector('[aria-disabled="true"]')).toBeNull();
     expect(host.querySelector('.account-topbar')).not.toBeNull();
+    expect(host.querySelector('.account-mobile-theme-control')).not.toBeNull();
+    expect(host.querySelectorAll('.account-mobile-theme-control button')).toHaveLength(2);
+    expect(host.querySelector('.account-toolbar-control--appearance')).not.toBeNull();
     expect(host.textContent).toContain('0.00 MXN');
     expect(host.querySelector('.account-sidebar .brand')?.getAttribute('href')).toBe(
       '/cuenta/nueva-orden',
@@ -102,7 +105,9 @@ describe('AccountDashboardComponent', () => {
     expect(profile.textContent).toContain('oscar@example.com');
     expect(profile.querySelector('[routerLink="/cuenta/perfil"]')).not.toBeNull();
     expect(profile.querySelector('app-locale-switcher')).not.toBeNull();
-    expect(profile.querySelector('app-theme-toggle')).not.toBeNull();
+    expect(profile.querySelector('app-theme-toggle .theme-segment')).not.toBeNull();
+    expect(profile.querySelectorAll('app-theme-toggle .theme-segment')).toHaveLength(1);
+    expect(profile.querySelectorAll('app-theme-toggle button')).toHaveLength(2);
     expect(profile.querySelector('.account-mobile-sheet__logout')).not.toBeNull();
   });
 });
