@@ -80,11 +80,14 @@ describe('AuthPageComponent login', () => {
     host.querySelector<HTMLButtonElement>('.auth-submit')?.click();
     await fixture.whenStable();
 
-    expect(login).toHaveBeenCalledWith({
-      email: 'oscar@example.com',
-      password: ' password-1 ',
-    });
-    expect(navigateByUrl).toHaveBeenCalledWith('/cuenta');
+    expect(login).toHaveBeenCalledWith(
+      {
+        email: 'oscar@example.com',
+        password: ' password-1 ',
+      },
+      false,
+    );
+    expect(navigateByUrl).toHaveBeenCalledWith('/cuenta/nueva-orden');
   });
 
   it('renders social providers as disabled preparation only', () => {

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, EstadoOrden, TipoMovimientoSaldo } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { readQuantityBounds } from '../../catalog/infrastructure/quantity-bounds';
 
 export interface PurchaseInput {
   tenantId: string;
@@ -104,23 +105,8 @@ export class OrderRepository {
       select: { providerOrigin: true, externalId: true, rawPayload: true },
     });
     if (!provider || provider.providerOrigin !== 'bulkfollows') return null;
-    const raw = provider.rawPayload;
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw))
-      throw new InvalidProviderContractError();
-    const record = raw as Record<string, unknown>;
-    const type =
-      typeof record.type === 'string' ? record.type.trim().toLowerCase() : '';
-    const min = this.strictInteger(record.min);
-    const max = this.strictInteger(record.max);
-    if (
-      type !== 'default' ||
-      !/^\d+$/.test(provider.externalId) ||
-      !this.rawServiceMatches(record.service, provider.externalId) ||
-      min === null ||
-      max === null ||
-      min < 1 ||
-      max < min
-    )
+    const bounds = readQuantityBounds(provider.rawPayload, provider.externalId);
+    if (!bounds)
       throw new InvalidProviderContractError();
     const override = row.configuracionesTienda[0];
     const complete =
@@ -135,33 +121,13 @@ export class OrderRepository {
     return {
       serviceId: row.id,
       externalId: provider.externalId,
-      min,
-      max,
+      min: bounds.min,
+      max: bounds.max,
       providerCost: row.providerCostAmount,
       providerCurrency: row.providerCostCurrency,
       sellingPrice,
       currency,
     };
-  }
-
-  private strictInteger(value: unknown): number | null {
-    if (typeof value === 'number' && Number.isSafeInteger(value)) return value;
-    if (typeof value === 'string' && /^\d+$/.test(value)) {
-      const n = Number(value);
-      return Number.isSafeInteger(n) ? n : null;
-    }
-    return null;
-  }
-
-  private rawServiceMatches(value: unknown, externalId: string): boolean {
-    if (value === undefined) return true;
-    if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0)
-      return String(value) === externalId;
-    return (
-      typeof value === 'string' &&
-      /^\d+$/.test(value.trim()) &&
-      value.trim() === externalId
-    );
   }
 
   async findByKey(input: PurchaseInput): Promise<OrderReplay | null> {

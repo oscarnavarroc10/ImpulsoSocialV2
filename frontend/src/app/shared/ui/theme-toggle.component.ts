@@ -1,6 +1,5 @@
 import { Component, inject } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { ThemePreference } from '../../core/config/tenant-config.model';
 import { ThemeService } from '../../core/theme/theme.service';
 import { IconComponent } from './icon.component';
 
@@ -9,50 +8,41 @@ import { IconComponent } from './icon.component';
   imports: [TranslocoPipe, IconComponent],
   template: `
     <div class="theme-switcher">
-      <label class="preset-control">
+      <div class="theme-segment" role="group" [attr.aria-label]="'common.visualStyle' | transloco">
+        <span class="visually-hidden">{{ 'common.visualStyle' | transloco }}</span>
+        @for (personality of theme.personalities; track personality.key) {
+          <button
+            type="button"
+            [class.is-active]="theme.personality() === personality.key"
+            [attr.aria-pressed]="theme.personality() === personality.key"
+            (click)="theme.setPersonality(personality.key)"
+          >
+            {{ personality.labelKey | transloco }}
+          </button>
+        }
+      </div>
+      <div class="theme-segment" role="group" [attr.aria-label]="'common.appearance' | transloco">
         <span class="visually-hidden">{{ 'common.appearance' | transloco }}</span>
-        <app-icon name="palette" />
-        <select (change)="changePreset($event)" [attr.aria-label]="'common.appearance' | transloco">
-          @for (preset of theme.presets(); track preset.key) {
-            <option [value]="preset.key" [selected]="preset.key === theme.preset()">
-              {{ preset.labelKey | transloco }}
-            </option>
-          }
-        </select>
-      </label>
-
-      <label class="theme-control">
-        <span class="visually-hidden">{{ 'common.theme' | transloco }}</span>
-        <app-icon [name]="themeIcon()" />
-        <select (change)="changePreference($event)" [attr.aria-label]="'common.theme' | transloco">
-          <option value="light" [selected]="theme.preference() === 'light'">
-            {{ 'common.light' | transloco }}
-          </option>
-          <option value="dark" [selected]="theme.preference() === 'dark'">
-            {{ 'common.dark' | transloco }}
-          </option>
-          <option value="system" [selected]="theme.preference() === 'system'">
-            {{ 'common.system' | transloco }}
-          </option>
-        </select>
-      </label>
+        <button
+          type="button"
+          [class.is-active]="theme.preference() === 'light'"
+          [attr.aria-pressed]="theme.preference() === 'light'"
+          (click)="theme.setPreference('light')"
+        >
+          <app-icon name="sun" /><span>{{ 'common.light' | transloco }}</span>
+        </button>
+        <button
+          type="button"
+          [class.is-active]="theme.preference() === 'dark'"
+          [attr.aria-pressed]="theme.preference() === 'dark'"
+          (click)="theme.setPreference('dark')"
+        >
+          <app-icon name="moon" /><span>{{ 'common.dark' | transloco }}</span>
+        </button>
+      </div>
     </div>
   `,
 })
 export class ThemeToggleComponent {
   protected readonly theme = inject(ThemeService);
-
-  protected themeIcon(): 'sun' | 'moon' | 'system' {
-    if (this.theme.preference() === 'light') return 'sun';
-    if (this.theme.preference() === 'dark') return 'moon';
-    return 'system';
-  }
-
-  protected changePreset(event: Event): void {
-    this.theme.setPreset((event.target as HTMLSelectElement).value);
-  }
-
-  protected changePreference(event: Event): void {
-    this.theme.setPreference((event.target as HTMLSelectElement).value as ThemePreference);
-  }
 }

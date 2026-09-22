@@ -16,6 +16,7 @@ describe('PublicCatalogService', () => {
       jest.fn<PublicCatalogRepository['findActiveTenantIdBySlug']>(),
     count: jest.fn<PublicCatalogRepository['count']>(),
     findMany: jest.fn<PublicCatalogRepository['findMany']>(),
+    findFacetRows: jest.fn<PublicCatalogRepository['findFacetRows']>(),
     findEligibleById:
       jest.fn<PublicCatalogRepository['findEligibleById']>(),
   };
@@ -31,6 +32,7 @@ describe('PublicCatalogService', () => {
     repository.findActiveTenantIdBySlug.mockResolvedValue('tenant-1');
     repository.count.mockResolvedValue(0);
     repository.findMany.mockResolvedValue([]);
+    repository.findFacetRows.mockResolvedValue([]);
   });
 
   function buildRow(overrides: Record<string, unknown> = {}) {
@@ -40,6 +42,11 @@ describe('PublicCatalogService', () => {
       description: 'Curated description',
       socialNetwork: 'Instagram',
       categoryId: 'cat-1',
+      category: {
+        id: 'cat-1',
+        name: 'Followers',
+        description: 'Commercial category',
+      },
       defaultSellingPriceAmount: 1000,
       defaultSellingPriceCurrency: 'USD',
       tenantOverride: null,
@@ -111,6 +118,19 @@ describe('PublicCatalogService', () => {
     });
   });
 
+  it('exposes only validated provider capabilities when available', async () => {
+    repository.findMany.mockResolvedValue([
+      buildRow({ providerMetadata: { refill: true, cancel: false } }),
+    ]);
+
+    const result = await service.list({});
+
+    expect(result.items[0].serviceMetadata).toEqual({
+      refill: true,
+      cancel: false,
+    });
+  });
+
   it('falls back to the default price when the override is partial', async () => {
     repository.findMany.mockResolvedValue([
       buildRow({
@@ -179,7 +199,14 @@ describe('PublicCatalogService', () => {
       description: 'Curated description',
       socialNetwork: 'Instagram',
       categoryId: 'cat-1',
+      category: {
+        id: 'cat-1',
+        name: 'Followers',
+        description: 'Commercial category',
+      },
       sellingPrice: { amount: 1000, currency: 'USD' },
+      minQuantity: null,
+      maxQuantity: null,
     });
   });
 
@@ -286,6 +313,7 @@ describe('PublicCatalogRepository', () => {
         categoryId: true,
         defaultSellingPriceAmount: true,
         defaultSellingPriceCurrency: true,
+        provenanceRef: true,
         configuracionesTienda: {
           where: { tenantId: 'tenant-1' },
           select: {
@@ -306,7 +334,6 @@ describe('PublicCatalogRepository', () => {
     for (const forbiddenKey of [
       'providerCostAmount',
       'providerCostCurrency',
-      'provenanceRef',
       'providerOrigin',
       'externalId',
       'rawPayload',

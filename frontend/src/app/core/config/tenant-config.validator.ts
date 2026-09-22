@@ -149,6 +149,13 @@ function assertTenantConfig(value: unknown): asserts value is TenantUiConfig {
   validateOptionalUrl(brand, 'logoLightUrl');
   validateOptionalUrl(brand, 'logoDarkUrl');
   validateOptionalUrl(brand, 'faviconUrl');
+  const personalityLogoUrls = brand['personalityLogoUrls'];
+  if (personalityLogoUrls !== undefined) {
+    assertRecord(personalityLogoUrls);
+    for (const key of ['girly', 'tomboy'] as const) {
+      validateOptionalUrl(personalityLogoUrls, key);
+    }
+  }
 
   const defaultPreference = theme['defaultPreference'];
   const defaultPreset = theme['defaultPreset'];

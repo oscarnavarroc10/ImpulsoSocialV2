@@ -113,6 +113,12 @@ model SyncJob {
   source     String
 }
 
+model CatalogPricingConfiguration {
+  id                     String   @id
+  sellingPriceMultiplier Decimal  @db.Decimal(10, 4)
+  updatedAt              DateTime @updatedAt
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   actorId   String

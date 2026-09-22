@@ -12,6 +12,8 @@ export type IconKey =
   | 'comments'
   | 'whatsapp'
   | 'tiktok'
+  | 'youtube'
+  | 'facebook'
   | 'sun'
   | 'moon'
   | 'system'
@@ -102,6 +104,7 @@ export interface TenantUiConfig {
     taglineKey: string;
     logoLightUrl?: string;
     logoDarkUrl?: string;
+    personalityLogoUrls?: Partial<Record<'girly' | 'tomboy', string>>;
     faviconUrl?: string;
   };
   theme: {

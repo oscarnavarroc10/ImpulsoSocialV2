@@ -38,7 +38,10 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: AuthApiService, useValue: { login, register, refresh, logout } },
-        { provide: SessionStorageService, useValue: { read, write, clear } },
+        {
+          provide: SessionStorageService,
+          useValue: { read, write, clear, isRemembered: () => false },
+        },
       ],
     });
   });
@@ -57,6 +60,12 @@ describe('AuthService', () => {
     expect(login).toHaveBeenCalledOnce();
     expect(write).toHaveBeenCalledWith(session);
     expect(service.accessToken()).toBe('access-token');
+  });
+
+  it('persists remember-me logins through durable storage', async () => {
+    const service = TestBed.inject(AuthService);
+    await service.login({ email: 'oscar@example.com', password: 'password-1' }, true);
+    expect(write).toHaveBeenCalledWith(session, true);
   });
 
   it('coalesces concurrent refreshes and rotates both tokens', async () => {

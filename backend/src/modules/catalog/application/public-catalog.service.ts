@@ -9,6 +9,7 @@ import {
   PublicCatalogQueryDto,
   PublicCatalogServiceDto,
   PublicCatalogListResponseDto,
+  PublicCatalogFacetsDto,
 } from './dto/public-catalog.dto';
 import {
   PublicCatalogRepository,
@@ -39,7 +40,11 @@ function mapRowToDto(row: PublicCatalogRow): PublicCatalogServiceDto {
     description: row.description,
     socialNetwork: row.socialNetwork,
     categoryId: row.categoryId,
+    category: row.category,
     sellingPrice,
+    minQuantity: row.quantityBounds?.min ?? null,
+    maxQuantity: row.quantityBounds?.max ?? null,
+    ...(row.providerMetadata ? { serviceMetadata: row.providerMetadata } : {}),
   };
 }
 
@@ -69,12 +74,46 @@ export class PublicCatalogService {
 
     return {
       items: rows.map(mapRowToDto),
+      facets: this.buildFacets(await this.repository.findFacetRows(tenantId)),
       pagination: {
         page,
         limit,
         total,
         totalPages: Math.ceil(total / limit),
       },
+    };
+  }
+
+  private buildFacets(
+    rows: Awaited<ReturnType<PublicCatalogRepository['findFacetRows']>>,
+  ): PublicCatalogFacetsDto {
+    const platforms = new Map<string, number>();
+    const categories = new Map<
+      string,
+      { platformKey: string; category: PublicCatalogRow['category']; count: number }
+    >();
+
+    for (const row of rows) {
+      platforms.set(row.socialNetwork, (platforms.get(row.socialNetwork) ?? 0) + 1);
+      const key = `${row.socialNetwork}:${row.category.id}`;
+      const current = categories.get(key);
+      if (current) current.count += 1;
+      else categories.set(key, { platformKey: row.socialNetwork, category: row.category, count: 1 });
+    }
+
+    return {
+      platforms: [...platforms.entries()].map(([key, serviceCount]) => ({
+        key,
+        label: key,
+        serviceCount,
+      })),
+      categories: [...categories.values()].map(({ platformKey, category, count }) => ({
+        id: category.id,
+        name: category.name,
+        description: category.description,
+        platformKey,
+        serviceCount: count,
+      })),
     };
   }
 

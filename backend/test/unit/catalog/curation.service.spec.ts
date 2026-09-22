@@ -19,12 +19,16 @@ describe('CurationService', () => {
   const auditService = {
     recordCuration: jest.fn(),
   };
+  const catalogPricingConfigurationRepository = {
+    findSellingPriceMultiplier: jest.fn(),
+  };
 
   const service = new CurationService(
     stagedServiceRepository as any,
     providerServiceRepository as any,
     masterServiceRepository as any,
     auditService as any,
+    catalogPricingConfigurationRepository as any,
   );
 
   beforeEach(() => {

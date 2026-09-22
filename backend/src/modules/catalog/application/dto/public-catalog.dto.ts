@@ -72,6 +72,25 @@ export class PublicSellingPriceDto {
   currency!: string;
 }
 
+export class PublicCatalogCategoryDto {
+  @ApiProperty({ description: 'Current catalog category id.' })
+  id!: string;
+
+  @ApiProperty({ description: 'Current commercial category name.' })
+  name!: string;
+
+  @ApiProperty({ nullable: true, description: 'Current commercial category description.' })
+  description!: string | null;
+}
+
+export class PublicCatalogServiceMetadataDto {
+  @ApiProperty({ description: 'Whether the provider service supports refill.' })
+  refill!: boolean;
+
+  @ApiProperty({ description: 'Whether the provider service supports cancellation.' })
+  cancel!: boolean;
+}
+
 export class PublicCatalogServiceDto {
   @ApiProperty({
     description: 'Internal MasterService id.',
@@ -94,8 +113,57 @@ export class PublicCatalogServiceDto {
   })
   categoryId!: string;
 
+  @ApiProperty({ type: () => PublicCatalogCategoryDto })
+  category!: PublicCatalogCategoryDto;
+
   @ApiProperty({ type: PublicSellingPriceDto })
   sellingPrice!: PublicSellingPriceDto;
+
+  @ApiProperty({
+    nullable: true,
+    description: 'Authoritative minimum quantity, or null when unavailable.',
+    example: 100,
+    type: Number,
+  })
+  minQuantity!: number | null;
+
+  @ApiProperty({
+    nullable: true,
+    description: 'Authoritative maximum quantity, or null when unavailable.',
+    example: 10000,
+    type: Number,
+  })
+  maxQuantity!: number | null;
+
+  @ApiPropertyOptional({ type: PublicCatalogServiceMetadataDto })
+  serviceMetadata?: PublicCatalogServiceMetadataDto;
+}
+
+export class PublicCatalogPlatformFacetDto {
+  @ApiProperty({ description: 'Stable platform key from the curated catalog.' })
+  key!: string;
+
+  @ApiProperty({ description: 'Customer-facing platform label.' })
+  label!: string;
+
+  @ApiProperty({ example: 12 })
+  serviceCount!: number;
+}
+
+export class PublicCatalogCategoryFacetDto extends PublicCatalogCategoryDto {
+  @ApiProperty({ description: 'Platform key associated with this category.' })
+  platformKey!: string;
+
+  @ApiProperty({ example: 4 })
+  serviceCount!: number;
+}
+
+export class PublicCatalogFacetsDto {
+  @ApiProperty({ type: [PublicCatalogPlatformFacetDto] })
+  platforms!: PublicCatalogPlatformFacetDto[];
+
+  @ApiProperty({ type: [PublicCatalogCategoryFacetDto] })
+  categories!: PublicCatalogCategoryFacetDto[];
 }
 
 export class PublicCatalogPaginationDto {
@@ -118,4 +186,7 @@ export class PublicCatalogListResponseDto {
 
   @ApiProperty({ type: PublicCatalogPaginationDto })
   pagination!: PublicCatalogPaginationDto;
+
+  @ApiProperty({ type: PublicCatalogFacetsDto })
+  facets!: PublicCatalogFacetsDto;
 }

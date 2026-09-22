@@ -142,7 +142,7 @@ describe('T003 theme and locale services', () => {
   it('applies dark tokens and color scheme', () => {
     const service = TestBed.inject(ThemeService);
     service.initialize();
-    expect(document.documentElement.style.getPropertyValue('--color-background')).toBe('#111');
+    expect(document.documentElement.style.getPropertyValue('--color-background')).toBe('#101116');
     expect(document.documentElement.style.getPropertyValue('color-scheme')).toBe('dark');
   });
 
@@ -150,35 +150,35 @@ describe('T003 theme and locale services', () => {
     const service = TestBed.inject(ThemeService);
     service.initialize();
     service.setPreference('light');
-    expect(localStorage.getItem('impulsosocial:theme-test:theme')).toBe('light');
+    expect(localStorage.getItem('theme-test:theme')).toBe('light');
   });
 
-  it('switches and persists a configured visual preset', () => {
+  it('switches and persists a visual personality', () => {
     const service = TestBed.inject(ThemeService);
     service.initialize();
-    service.setPreset('x');
-    expect(service.preset()).toBe('x');
-    expect(document.documentElement.dataset['themePreset']).toBe('x');
-    expect(document.documentElement.style.getPropertyValue('--color-secondary')).toBe('#1d9bf0');
-    expect(localStorage.getItem('impulsosocial:theme-test:theme-preset')).toBe('x');
+    service.setPersonality('tomboy');
+    expect(service.personality()).toBe('tomboy');
+    expect(document.documentElement.dataset['themePreset']).toBe('tomboy');
+    expect(document.documentElement.style.getPropertyValue('--color-secondary')).toBe('#75c9ef');
+    expect(localStorage.getItem('theme-test:theme-preset')).toBe('tomboy');
   });
 
   it('ignores an unknown visual preset', () => {
     const service = TestBed.inject(ThemeService);
     service.initialize();
     service.setPreset('unknown');
-    expect(service.preset()).toBe('spotify');
+    expect(service.preset()).toBe('girly');
   });
 
   it('falls back to the configured preset when storage is invalid', () => {
-    localStorage.setItem('impulsosocial:theme-test:theme-preset', 'missing');
+    localStorage.setItem('theme-test:theme-preset', 'missing');
     const service = TestBed.inject(ThemeService);
     service.initialize();
-    expect(service.preset()).toBe('spotify');
+    expect(service.preset()).toBe('girly');
   });
 
   it('ignores an invalid stored theme preference', () => {
-    localStorage.setItem('impulsosocial:theme-test:theme', 'neon');
+    localStorage.setItem('theme-test:theme', 'neon');
     const service = TestBed.inject(ThemeService);
     service.initialize();
     expect(service.preference()).toBe('dark');
