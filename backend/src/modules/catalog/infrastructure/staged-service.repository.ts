@@ -113,6 +113,17 @@ export class StagedServiceRepository {
     });
   }
 
+  async findPromotionRecords() {
+    return this.prisma.stagedService.findMany({
+      orderBy: {
+        ingestedAt: 'asc',
+      },
+      include: {
+        providerService: true,
+      },
+    });
+  }
+
   async updateReviewStatus(id: string, status: 'approved' | 'rejected') {
     return this.prisma.stagedService.update({
       where: { id },

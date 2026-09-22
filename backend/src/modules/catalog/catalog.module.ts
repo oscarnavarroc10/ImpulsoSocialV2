@@ -32,6 +32,7 @@ import { SnapshotExportController } from './presentation/snapshot-export.control
 import { CatalogAuthorizationService } from './security/catalog-authorization.service';
 import { PublicCatalogRepository } from './infrastructure/public-catalog.repository';
 import { PublicCatalogService } from './application/public-catalog.service';
+import { CatalogPricingConfigurationRepository } from './infrastructure/catalog-pricing-configuration.repository';
 import { PublicCatalogController } from './presentation/public-catalog.controller';
 
 // Minimal fail-closed adapter for missing external authorization integration.
@@ -86,6 +87,7 @@ import { PublicCatalogController } from './presentation/public-catalog.controlle
     { provide: PROVIDER_CATALOG_CLIENT, useExisting: BulkFollowsClient },
     PublicCatalogRepository,
     PublicCatalogService,
+    CatalogPricingConfigurationRepository,
   ],
   exports: [
     ProviderServiceRepository,
@@ -104,6 +106,7 @@ import { PublicCatalogController } from './presentation/public-catalog.controlle
     ExportService,
     SyncService,
     PROVIDER_CATALOG_CLIENT,
+    CatalogPricingConfigurationRepository,
   ],
 })
 export class CatalogModule {}

@@ -4,6 +4,7 @@ const ALLOWED_SOCIAL_NETWORKS = [
   'Instagram',
   'Facebook',
   'TikTok',
+  'YouTube',
   'Website',
   'Other',
 ] as const;
@@ -45,7 +46,7 @@ export class StagedCurationDto {
     if (typeof b.curatedSocialNetwork === 'string') {
       if (!ALLOWED_SOCIAL_NETWORKS.includes(b.curatedSocialNetwork as never)) {
         throw new BadRequestException(
-          'curatedSocialNetwork must be one of Instagram, Facebook, TikTok, Website, or Other',
+          'curatedSocialNetwork must be one of Instagram, Facebook, TikTok, YouTube, Website, or Other',
         );
       }
       dto.curatedSocialNetwork =

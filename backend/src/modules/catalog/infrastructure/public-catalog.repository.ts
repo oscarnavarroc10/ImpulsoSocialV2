@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { readQuantityBounds } from './quantity-bounds';
+import { SUPPORTED_SOCIAL_NETWORKS } from '../application/taxonomy-normalizer';
 
 export interface PublicCatalogFilters {
   socialNetwork?: string;
@@ -12,12 +14,24 @@ export interface PublicCatalogRow {
   description: string;
   socialNetwork: string;
   categoryId: string;
+  category: {
+    id: string;
+    name: string;
+    description: string | null;
+  };
   defaultSellingPriceAmount: number;
   defaultSellingPriceCurrency: string;
   tenantOverride: {
     sellingPriceAmount: number | null;
     sellingPriceCurrency: string | null;
   } | null;
+  quantityBounds: { min: number; max: number } | null;
+  providerMetadata?: { refill: boolean; cancel: boolean } | null;
+}
+
+export interface PublicCatalogFacetRow {
+  socialNetwork: string;
+  category: PublicCatalogRow['category'];
 }
 
 type RawRow = {
@@ -32,13 +46,26 @@ type RawRow = {
     sellingPriceAmount: number | null;
     sellingPriceCurrency: string | null;
   }[];
+  provenanceRef: string | null;
+};
+
+type RawFacetRow = {
+  socialNetwork: string;
+  categoryId: string;
 };
 
 function buildEligibleWhere(tenantId: string, filters: PublicCatalogFilters) {
+  const requestedNetwork = filters.socialNetwork?.trim();
+  const socialNetwork = requestedNetwork
+    ? SUPPORTED_SOCIAL_NETWORKS.includes(requestedNetwork as never)
+      ? requestedNetwork
+      : { in: [] as string[] }
+    : { in: [...SUPPORTED_SOCIAL_NETWORKS] };
+
   return {
     status: 'active' as const,
     isVisible: true,
-    ...(filters.socialNetwork ? { socialNetwork: filters.socialNetwork } : {}),
+    socialNetwork,
     ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
     // A tenant-disabled override excludes the service; absence never enables it.
     NOT: {
@@ -58,6 +85,7 @@ function buildSelect(tenantId: string) {
     categoryId: true,
     defaultSellingPriceAmount: true,
     defaultSellingPriceCurrency: true,
+    provenanceRef: true,
     configuracionesTienda: {
       where: { tenantId },
       select: { sellingPriceAmount: true, sellingPriceCurrency: true },
@@ -66,7 +94,19 @@ function buildSelect(tenantId: string) {
   };
 }
 
-function mapRow(row: RawRow): PublicCatalogRow {
+function mapRow(
+  row: RawRow,
+  provider: {
+    providerOrigin: string;
+    externalId: string;
+    rawPayload: unknown;
+  } | null,
+  category: PublicCatalogRow['category'] | undefined,
+): PublicCatalogRow {
+  if (!category) {
+    throw new Error(`Category not found for public catalog service ${row.id}`);
+  }
+
   const override = row.configuracionesTienda[0] ?? null;
   return {
     id: row.id,
@@ -74,6 +114,7 @@ function mapRow(row: RawRow): PublicCatalogRow {
     description: row.description,
     socialNetwork: row.socialNetwork,
     categoryId: row.categoryId,
+    category,
     defaultSellingPriceAmount: row.defaultSellingPriceAmount,
     defaultSellingPriceCurrency: row.defaultSellingPriceCurrency,
     tenantOverride: override
@@ -82,7 +123,26 @@ function mapRow(row: RawRow): PublicCatalogRow {
           sellingPriceCurrency: override.sellingPriceCurrency,
         }
       : null,
+    quantityBounds:
+      provider?.providerOrigin === 'bulkfollows'
+        ? readQuantityBounds(provider.rawPayload, provider.externalId)
+        : null,
+    providerMetadata: readProviderMetadata(provider),
   };
+}
+
+function readProviderMetadata(
+  provider: { providerOrigin: string; rawPayload: unknown } | null,
+): PublicCatalogRow['providerMetadata'] {
+  if (!provider || provider.providerOrigin !== 'bulkfollows') return null;
+  if (!provider.rawPayload || typeof provider.rawPayload !== 'object') return null;
+
+  const payload = provider.rawPayload as Record<string, unknown>;
+  const refill = payload['refill'];
+  const cancel = payload['cancel'];
+  if (typeof refill !== 'boolean' || typeof cancel !== 'boolean') return null;
+
+  return { refill, cancel };
 }
 
 @Injectable()
@@ -121,7 +181,37 @@ export class PublicCatalogRepository {
       take,
     });
 
-    return rows.map(mapRow);
+    const providers = await this.findProviders(rows);
+    const categories = await this.findCategories(
+      rows.map((row) => row.categoryId),
+    );
+    return rows.map((row) =>
+      mapRow(
+        row,
+        providers.get(row.provenanceRef ?? '') ?? null,
+        categories.get(row.categoryId),
+      ),
+    );
+  }
+
+  async findFacetRows(tenantId: string): Promise<PublicCatalogFacetRow[]> {
+    const rows: RawFacetRow[] = await this.prisma.masterService.findMany({
+      where: buildEligibleWhere(tenantId, {}),
+      select: { socialNetwork: true, categoryId: true },
+    });
+    const categories = await this.findCategories(
+      rows.map((row) => row.categoryId),
+    );
+
+    return rows.map((row) => {
+      const category = categories.get(row.categoryId);
+      if (!category) {
+        throw new Error(
+          `Category not found for public catalog service category ${row.categoryId}`,
+        );
+      }
+      return { socialNetwork: row.socialNetwork, category };
+    });
   }
 
   async findEligibleById(
@@ -133,6 +223,47 @@ export class PublicCatalogRepository {
       select: buildSelect(tenantId),
     });
 
-    return row ? mapRow(row) : null;
+    if (!row) return null;
+    const providers = await this.findProviders([row]);
+    const categories = await this.findCategories([row.categoryId]);
+    return mapRow(
+      row,
+      providers.get(row.provenanceRef ?? '') ?? null,
+      categories.get(row.categoryId),
+    );
+  }
+
+  private async findProviders(rows: RawRow[]) {
+    const ids = rows.flatMap((row) =>
+      row.provenanceRef ? [row.provenanceRef] : [],
+    );
+    if (ids.length === 0)
+      return new Map<
+        string,
+        { providerOrigin: string; externalId: string; rawPayload: unknown }
+      >();
+
+    const providers = await this.prisma.providerService.findMany({
+      where: { id: { in: ids } },
+      select: {
+        id: true,
+        providerOrigin: true,
+        externalId: true,
+        rawPayload: true,
+      },
+    });
+    return new Map(providers.map((provider) => [provider.id, provider]));
+  }
+
+  private async findCategories(categoryIds: string[]) {
+    const ids = [...new Set(categoryIds)];
+    if (ids.length === 0)
+      return new Map<string, PublicCatalogRow['category']>();
+
+    const categories = await this.prisma.category.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true, description: true },
+    });
+    return new Map(categories.map((category) => [category.id, category]));
   }
 }

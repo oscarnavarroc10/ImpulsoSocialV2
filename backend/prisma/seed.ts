@@ -40,6 +40,7 @@ async function main(): Promise<void> {
     moneda: tienda.moneda,
     activa: tienda.activa,
   });
+
 }
 
 main()

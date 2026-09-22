@@ -1,117 +1,252 @@
 <div class="account-layout">
   <aside class="account-sidebar">
-    <app-brand-logo />
+    <app-brand-logo destination="/cuenta/nueva-orden" />
     <span class="account-nav-label">{{ 'account.yourAccount' | transloco }}</span>
-    <nav [attr.aria-label]="'account.navigation' | transloco">
-      <a class="active" routerLink="/cuenta"
-        ><app-icon name="home" />{{ 'account.summary' | transloco }}</a
+    <nav
+      id="account-navigation"
+      [class.is-open]="navigationOpen()"
+      [attr.aria-label]="'account.navigation' | transloco"
+    >
+      <a routerLink="/cuenta/nueva-orden" routerLinkActive="active" (click)="closeNavigation()"
+        ><app-icon name="orders" />{{ 'account.newOrder' | transloco }}</a
       >
-      <a routerLink="/services"
-        ><app-icon name="instagram" />{{ 'navigation.services' | transloco }}</a
+      <a routerLink="/cuenta/servicios" routerLinkActive="active" (click)="closeNavigation()"
+        ><app-icon name="instagram" />{{ 'account.services' | transloco }}</a
       >
-      <span aria-disabled="true"
-        ><app-icon name="orders" />{{ 'account.ordersSoon' | transloco }}</span
+      <a routerLink="/cuenta/ordenes" routerLinkActive="active" (click)="closeNavigation()"
+        ><app-icon name="orders" />{{ 'account.orders' | transloco }}</a
       >
-      <span aria-disabled="true"
-        ><app-icon name="wallet" />{{ 'account.walletSoon' | transloco }}</span
+      <a routerLink="/cuenta/saldo" routerLinkActive="active" (click)="closeNavigation()"
+        ><app-icon name="wallet" />{{ 'account.wallet' | transloco }}</a
       >
-      <a routerLink="/faq"><app-icon name="support" />{{ 'account.support' | transloco }}</a>
+      <a routerLink="/cuenta/soporte" routerLinkActive="active" (click)="closeNavigation()"
+        ><app-icon name="support" />{{ 'account.support' | transloco }}</a
+      >
     </nav>
-    <div class="account-profile-mini">
+    <a
+      class="account-profile-mini"
+      routerLink="/cuenta/perfil"
+      (click)="closeNavigation()"
+      [attr.aria-label]="'account.profileTitle' | transloco"
+    >
       <span class="account-avatar">{{ initials() }}</span>
       <span
         ><strong>{{ auth.user()?.nombre }}</strong
         ><small>{{ auth.user()?.email }}</small></span
       >
-    </div>
+    </a>
   </aside>
+  @if (navigationOpen()) {
+    <button
+      class="account-nav-backdrop"
+      type="button"
+      (click)="closeNavigation()"
+      [attr.aria-label]="'account.closeNavigation' | transloco"
+    ></button>
+  }
 
   <main class="account-main">
     <header class="account-topbar">
-      <div>
-        <span>{{ 'account.welcome' | transloco }}</span>
-        <strong>{{ auth.user()?.nombre }}</strong>
+      <div class="account-identity">
+        <button
+          class="account-menu-button icon-button"
+          type="button"
+          (click)="toggleNavigation()"
+          [attr.aria-expanded]="navigationOpen()"
+          aria-controls="account-navigation"
+          [attr.aria-label]="'account.toggleNavigation' | transloco"
+        >
+          <app-icon name="menu" />
+        </button>
+        <app-brand-logo class="account-mobile-brand" destination="/cuenta/nueva-orden" />
+      </div>
+      <button
+        class="account-mobile-avatar"
+        type="button"
+        (click)="toggleProfile()"
+        [class.is-active]="profileOpen()"
+        [attr.aria-expanded]="profileOpen()"
+        aria-controls="account-profile-menu"
+        [attr.aria-label]="'account.profileTitle' | transloco"
+      >
+        {{ initials() }}
+      </button>
+      <a
+        class="account-topbar-balance"
+        routerLink="/cuenta/saldo"
+        [class.is-unavailable]="balanceStore.state() === 'unavailable'"
+        [attr.aria-label]="'account.wallet' | transloco"
+      >
+        <span class="account-topbar-balance__label account-topbar-balance__label--desktop">{{
+          'account.currentBalance' | transloco
+        }}</span>
+        <span class="account-topbar-balance__label account-topbar-balance__label--mobile">{{
+          'account.mobileBalance' | transloco
+        }}</span>
+        @if (balanceStore.state() === 'loading') {
+          <strong>{{ 'account.walletLoading' | transloco }}</strong>
+        } @else if (balanceStore.state() === 'ready' && balanceStore.balance(); as wallet) {
+          <strong
+            >{{ wallet.balance.amount / 100 | number: '1.2-2' }}
+            {{ wallet.balance.currency }}</strong
+          >
+        } @else {
+          <strong>{{ 'account.balanceUnavailableShort' | transloco }}</strong>
+        }
+        <span class="account-topbar-balance__add" aria-hidden="true">+</span>
+      </a>
+      <div class="account-mobile-theme-control">
+        <app-theme-toggle [appearanceOnly]="true" [iconOnly]="true" />
       </div>
       <div class="account-topbar-actions">
-        <app-locale-switcher />
-        <app-theme-toggle />
+        <div class="account-toolbar-control account-toolbar-control--language">
+          <app-locale-switcher />
+        </div>
+        <div class="account-toolbar-control account-toolbar-control--appearance">
+          <app-theme-toggle [appearanceOnly]="true" />
+        </div>
         <button
-          class="icon-button"
+          class="account-desktop-profile"
           type="button"
-          (click)="logout()"
-          [attr.aria-label]="'common.logout' | transloco"
+          (click)="toggleProfile()"
+          [class.is-active]="profileOpen()"
+          [attr.aria-expanded]="profileOpen()"
+          aria-controls="account-profile-menu"
+          [attr.aria-label]="'account.profileTitle' | transloco"
         >
-          <app-icon name="logout" />
+          <span class="account-avatar">{{ initials() }}</span>
+          <span class="account-desktop-profile__copy">
+            <strong>{{ auth.user()?.nombre }}</strong>
+          </span>
+          <app-icon name="arrowRight" />
         </button>
       </div>
     </header>
 
     <div class="account-content">
-      <section class="account-welcome">
-        <div>
-          <span class="eyebrow">{{ 'account.eyebrow' | transloco }}</span>
-          <h1>{{ 'account.title' | transloco }}</h1>
-          <p>{{ 'account.intro' | transloco }}</p>
-        </div>
-        <a class="button" routerLink="/services"
-          >{{ 'account.explore' | transloco }}<app-icon name="arrowRight"
-        /></a>
-      </section>
-
-      <div class="account-grid">
-        <section class="account-card account-profile-card">
-          <span class="eyebrow">{{ 'account.profileEyebrow' | transloco }}</span>
-          <h2>{{ 'account.profileTitle' | transloco }}</h2>
-          <dl>
-            <div>
-              <dt>{{ 'auth.name' | transloco }}</dt>
-              <dd>{{ auth.user()?.nombre }}</dd>
-            </div>
-            <div>
-              <dt>{{ 'auth.email' | transloco }}</dt>
-              <dd>{{ auth.user()?.email }}</dd>
-            </div>
-            <div>
-              <dt>{{ 'account.role' | transloco }}</dt>
-              <dd>{{ auth.user()?.rol }}</dd>
-            </div>
-          </dl>
-        </section>
-
-        <section class="account-card account-next-card">
-          <span class="eyebrow">{{ 'account.nextEyebrow' | transloco }}</span>
-          <h2>{{ 'account.nextTitle' | transloco }}</h2>
-          <p>{{ 'account.nextText' | transloco }}</p>
-          <div class="account-quick-actions">
-            <a routerLink="/services"
-              ><app-icon name="instagram" />{{ 'account.viewCatalog' | transloco
-              }}<app-icon name="arrowRight"
-            /></a>
-            <a routerLink="/faq"
-              ><app-icon name="support" />{{ 'account.getHelp' | transloco
-              }}<app-icon name="arrowRight"
-            /></a>
-          </div>
-        </section>
-      </div>
-
-      <section class="account-coming-soon" aria-labelledby="account-coming-title">
-        <div>
-          <span class="eyebrow">{{ 'account.yourAccount' | transloco }}</span>
-          <h2 id="account-coming-title">{{ 'account.comingTitle' | transloco }}</h2>
-          <p>{{ 'account.comingText' | transloco }}</p>
-        </div>
-        <div class="account-future-grid">
-          @for (key of ['orders', 'wallet', 'tracking']; track key) {
-            <article>
-              <app-icon [name]="key === 'wallet' ? 'wallet' : 'orders'" /><strong>{{
-                'account.future.' + key + '.title' | transloco
-              }}</strong
-              ><span>{{ 'account.future.' + key + '.text' | transloco }}</span>
-            </article>
-          }
-        </div>
-      </section>
+      <router-outlet />
     </div>
   </main>
+
+  <nav class="account-mobile-nav" [attr.aria-label]="'account.mobileNavigation' | transloco">
+    <a routerLink="/cuenta/nueva-orden" routerLinkActive="active"
+      ><app-icon name="orders" /><span>{{ 'account.newOrder' | transloco }}</span></a
+    >
+    <a routerLink="/cuenta/servicios" routerLinkActive="active"
+      ><app-icon name="instagram" /><span>{{ 'account.services' | transloco }}</span></a
+    >
+    <a class="account-mobile-nav__balance" routerLink="/cuenta/saldo" routerLinkActive="active"
+      ><app-icon name="wallet" /><span>{{ 'account.wallet' | transloco }}</span></a
+    >
+    <a routerLink="/cuenta/ordenes" routerLinkActive="active"
+      ><app-icon name="orders" /><span>{{ 'account.ordersShort' | transloco }}</span></a
+    >
+    <button
+      type="button"
+      [class.active]="moreOpen()"
+      (click)="toggleMore()"
+      [attr.aria-expanded]="moreOpen()"
+      aria-controls="account-more-menu"
+    >
+      <app-icon name="menu" /><span>{{ 'account.more' | transloco }}</span>
+    </button>
+  </nav>
+
+  @if (moreOpen()) {
+    <div class="account-mobile-sheet-layer">
+      <button
+        class="account-mobile-sheet-backdrop"
+        type="button"
+        (click)="closeMore()"
+        [attr.aria-label]="'account.closeMore' | transloco"
+      ></button>
+      <section
+        class="account-mobile-sheet"
+        id="account-more-menu"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="'account.more' | transloco"
+      >
+        <div class="account-mobile-sheet__header">
+          <div>
+            <span>{{ 'account.yourAccount' | transloco }}</span
+            ><strong>{{ auth.user()?.nombre }}</strong>
+          </div>
+          <button
+            class="icon-button"
+            type="button"
+            (click)="closeMore()"
+            [attr.aria-label]="'account.closeMore' | transloco"
+          >
+            <app-icon name="close" />
+          </button>
+        </div>
+        <div class="account-mobile-sheet__links">
+          <a routerLink="/cuenta/soporte" (click)="closeMore()"
+            ><app-icon name="support" />{{ 'account.support' | transloco }}</a
+          >
+        </div>
+        <button class="account-mobile-sheet__logout" type="button" (click)="logout()">
+          <app-icon name="logout" />{{ 'common.logout' | transloco }}
+        </button>
+      </section>
+    </div>
+  }
+
+  @if (profileOpen()) {
+    <div class="account-profile-popover-layer">
+      <button
+        class="account-profile-popover-backdrop"
+        type="button"
+        (click)="closeProfile()"
+        [attr.aria-label]="'account.closeProfile' | transloco"
+      ></button>
+      <section
+        class="account-profile-popover"
+        id="account-profile-menu"
+        role="menu"
+        [attr.aria-label]="'account.profileTitle' | transloco"
+      >
+        <div class="account-profile-popover__header">
+          <div>
+            <span>{{ 'account.profileTitle' | transloco }}</span
+            ><strong>{{ auth.user()?.nombre }}</strong
+            ><small>{{ auth.user()?.email }}</small>
+          </div>
+          <button
+            class="icon-button"
+            type="button"
+            (click)="closeProfile()"
+            [attr.aria-label]="'account.closeProfile' | transloco"
+          >
+            <app-icon name="close" />
+          </button>
+        </div>
+        <a
+          class="account-profile-menu__link"
+          role="menuitem"
+          routerLink="/cuenta/perfil"
+          (click)="closeProfile()"
+          ><app-icon name="user" /><span>{{ 'account.profileTitle' | transloco }}</span
+          ><app-icon name="arrowRight"
+        /></a>
+        <div class="account-profile-menu__control" role="group">
+          <span>{{ 'common.language' | transloco }}</span
+          ><app-locale-switcher />
+        </div>
+        <div class="account-profile-menu__control" role="group">
+          <span>{{ 'common.theme' | transloco }}</span
+          ><app-theme-toggle [personalityOnly]="true" />
+        </div>
+        <button
+          class="account-mobile-sheet__logout"
+          role="menuitem"
+          type="button"
+          (click)="logout()"
+        >
+          <app-icon name="logout" />{{ 'common.logout' | transloco }}
+        </button>
+      </section>
+    </div>
+  }
 </div>

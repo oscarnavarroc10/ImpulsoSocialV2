@@ -5,15 +5,20 @@
   "brand": {
     "name": "ImpulsoSocial",
     "shortName": "ImpulsoSocial",
-    "taglineKey": "home.tagline"
+    "taglineKey": "home.tagline",
+    "heroDecorationUrl": "/branding/impulsosocial/hero-decoration.svg",
+    "personalityLogoUrls": {
+      "girly": "/assets/branding/impulsocuentas/logo-girly.png",
+      "tomboy": "/assets/branding/impulsocuentas/logo-tomboy.png"
+    }
   },
   "theme": {
     "defaultPreference": "light",
-    "defaultPreset": "spotify",
+    "defaultPreset": "girly",
     "presets": [
       {
-        "key": "spotify",
-        "labelKey": "themes.spotify",
+        "key": "girly",
+        "labelKey": "themes.girly",
         "light": {
           "primary": "#12843D",
           "primaryContrast": "#FFFFFF",
@@ -56,8 +61,8 @@
         }
       },
       {
-        "key": "minimal",
-        "labelKey": "themes.minimal",
+        "key": "tomboy",
+        "labelKey": "themes.tomboy",
         "light": {
           "primary": "#111827",
           "primaryContrast": "#FFFFFF",
@@ -191,7 +196,10 @@
   },
   "localization": {
     "defaultLocale": "es-MX",
-    "supportedLocales": ["es-MX", "en"]
+    "supportedLocales": [
+      "es-MX",
+      "en"
+    ]
   },
   "socialLinks": {
     "instagramUrl": "https://www.instagram.com/"

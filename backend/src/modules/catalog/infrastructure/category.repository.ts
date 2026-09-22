@@ -28,6 +28,31 @@ export class CategoryRepository {
     return categories[0] ?? null;
   }
 
+  async findOrCreateByName(name: string) {
+    const existing = await this.findByName(name);
+    if (existing) {
+      return existing;
+    }
+
+    const id = `catalog-category-${name
+      .trim()
+      .toLocaleLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')}`;
+
+    return this.prisma.category.upsert({
+      where: { id },
+      update: {},
+      create: {
+        id,
+        name,
+        description: `Categoría comercial normalizada: ${name}`,
+      },
+    });
+  }
+
   async create(data: { name: string; description: string | null }) {
     return this.prisma.category.create({ data });
   }

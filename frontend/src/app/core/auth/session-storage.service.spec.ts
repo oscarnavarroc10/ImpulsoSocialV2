@@ -28,9 +28,13 @@ describe('SessionStorageService', () => {
       ],
     });
     sessionStorage.clear();
+    localStorage.clear();
   });
 
-  afterEach(() => sessionStorage.clear());
+  afterEach(() => {
+    sessionStorage.clear();
+    localStorage.clear();
+  });
 
   it('persists, restores and clears a tenant-scoped session', () => {
     const service = TestBed.inject(SessionStorageService);
@@ -45,5 +49,35 @@ describe('SessionStorageService', () => {
     sessionStorage.setItem('impulsosocial:test-tenant:session:v1', '{"accessToken":true}');
     expect(TestBed.inject(SessionStorageService).read()).toBeNull();
     expect(sessionStorage.getItem('impulsosocial:test-tenant:session:v1')).toBeNull();
+  });
+
+  it('uses durable storage only when remember-me is enabled', () => {
+    const service = TestBed.inject(SessionStorageService);
+    service.write(session, true);
+    expect(service.read()).toEqual(session);
+    expect(service.isRemembered()).toBe(true);
+    expect(localStorage.getItem('impulsosocial:test-tenant:session:v1')).not.toBeNull();
+    expect(sessionStorage.getItem('impulsosocial:test-tenant:session:v1')).toBeNull();
+
+    service.write(session, false);
+    expect(service.isRemembered()).toBe(false);
+    expect(localStorage.getItem('impulsosocial:test-tenant:session:v1')).toBeNull();
+    expect(sessionStorage.getItem('impulsosocial:test-tenant:session:v1')).not.toBeNull();
+  });
+
+  it('clears both storage locations on logout cleanup', () => {
+    const service = TestBed.inject(SessionStorageService);
+    service.write(session, true);
+    service.write(session, false);
+    service.clear();
+    expect(localStorage.getItem('impulsosocial:test-tenant:session:v1')).toBeNull();
+    expect(sessionStorage.getItem('impulsosocial:test-tenant:session:v1')).toBeNull();
+  });
+
+  it('fails closed and removes an invalid durable session', () => {
+    localStorage.setItem('impulsosocial:test-tenant:session:v1', '{"refreshToken":true}');
+    const service = TestBed.inject(SessionStorageService);
+    expect(service.read()).toBeNull();
+    expect(localStorage.getItem('impulsosocial:test-tenant:session:v1')).toBeNull();
   });
 });

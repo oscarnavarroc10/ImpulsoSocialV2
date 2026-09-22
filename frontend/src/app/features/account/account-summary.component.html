@@ -1,0 +1,48 @@
+<div class="account-grid">
+  <section class="account-card account-profile-card">
+    <span class="eyebrow">{{ 'account.profileEyebrow' | transloco }}</span>
+    <h2>{{ 'account.profileTitle' | transloco }}</h2>
+    <dl>
+      <div>
+        <dt>{{ 'auth.name' | transloco }}</dt>
+        <dd>{{ auth.user()?.nombre }}</dd>
+      </div>
+      <div>
+        <dt>{{ 'auth.email' | transloco }}</dt>
+        <dd>{{ auth.user()?.email }}</dd>
+      </div>
+      <div>
+        <dt>{{ 'account.role' | transloco }}</dt>
+        <dd>{{ auth.user()?.rol }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="account-card account-next-card">
+    <span class="eyebrow">{{ 'account.nextEyebrow' | transloco }}</span>
+    <h2>{{ 'account.nextTitle' | transloco }}</h2>
+    <p>{{ 'account.nextText' | transloco }}</p>
+    <div class="account-quick-actions">
+      <a routerLink="/cuenta/perfil">
+        <app-icon name="user" />{{ 'account.profileTitle' | transloco }}<app-icon name="arrowRight" />
+      </a>
+      <a routerLink="/cuenta/servicios">
+        <app-icon name="instagram" />{{ 'account.viewCatalog' | transloco }}<app-icon
+          name="arrowRight"
+        />
+      </a>
+      <a routerLink="/cuenta/soporte">
+        <app-icon name="support" />{{ 'account.getHelp' | transloco }}<app-icon name="arrowRight" />
+      </a>
+    </div>
+  </section>
+</div>
+
+<section class="account-card account-summary-honesty">
+  <span class="eyebrow">{{ 'account.summary' | transloco }}</span>
+  <p>{{ 'account.summaryHonest' | transloco }}</p>
+  <div class="account-quick-actions">
+    <a routerLink="/cuenta/ordenes"><app-icon name="orders" />{{ 'account.orders' | transloco }}<app-icon name="arrowRight" /></a>
+    <a routerLink="/cuenta/saldo"><app-icon name="wallet" />{{ 'account.wallet' | transloco }}<app-icon name="arrowRight" /></a>
+  </div>
+</section>

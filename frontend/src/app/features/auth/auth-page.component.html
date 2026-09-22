@@ -166,6 +166,10 @@
               <small class="field-error">{{ error | transloco }}</small>
             }
           </label>
+          <label class="terms-field auth-remember-field">
+            <input formControlName="rememberMe" type="checkbox" />
+            <span>{{ 'auth.rememberMe' | transloco }}</span>
+          </label>
           <button class="button auth-submit" type="submit" [disabled]="auth.isBusy()">
             {{ (auth.isBusy() ? 'auth.submitting' : 'auth.loginAction') | transloco }}
             <app-icon name="arrowRight" />

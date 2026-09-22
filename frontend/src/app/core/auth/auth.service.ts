@@ -21,6 +21,7 @@ export class AuthService {
   private readonly storage = inject(SessionStorageService);
   private readonly sessionSignal = signal<SessionState | null>(null);
   private readonly busySignal = signal(false);
+  private rememberMe = false;
   private refreshRequest: Observable<string> | null = null;
 
   readonly user = computed(() => this.sessionSignal()?.usuario ?? null);
@@ -30,9 +31,11 @@ export class AuthService {
 
   restore(): void {
     this.sessionSignal.set(this.storage.read());
+    this.rememberMe = this.storage.isRemembered?.() ?? false;
   }
 
-  login(request: LoginRequest): Promise<void> {
+  login(request: LoginRequest, rememberMe = false): Promise<void> {
+    this.rememberMe = rememberMe;
     return this.run(() => firstValueFrom(this.api.login(request)));
   }
 
@@ -50,7 +53,7 @@ export class AuthService {
         tap((response) => {
           const next: SessionState = { ...current, ...response };
           this.sessionSignal.set(next);
-          this.storage.write(next);
+          this.persist(next);
         }),
         map((response) => response.accessToken),
       );
@@ -81,6 +84,7 @@ export class AuthService {
 
   clearSession(): void {
     this.sessionSignal.set(null);
+    this.rememberMe = false;
     this.storage.clear();
   }
 
@@ -90,7 +94,7 @@ export class AuthService {
     try {
       const session = await operation();
       this.sessionSignal.set(session);
-      this.storage.write(session);
+      this.persist(session);
     } catch (error) {
       throw this.normalizeError(error);
     } finally {
@@ -107,5 +111,10 @@ export class AuthService {
     if (error.status === 409) return new AuthOperationError('conflict');
     if (error.status >= 500) return new AuthOperationError('server');
     return new AuthOperationError('unknown');
+  }
+
+  private persist(session: SessionState): void {
+    if (this.rememberMe) this.storage.write(session, true);
+    else this.storage.write(session);
   }
 }

@@ -26,6 +26,7 @@ export class AuthPageComponent {
   protected readonly loginForm = this.formBuilder.group({
     email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
     password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(100)]],
+    rememberMe: [false],
   });
 
   protected readonly registerForm = this.formBuilder.group({
@@ -37,7 +38,7 @@ export class AuthPageComponent {
   });
 
   constructor() {
-    if (this.auth.isAuthenticated()) void this.router.navigateByUrl('/cuenta');
+    if (this.auth.isAuthenticated()) void this.router.navigateByUrl('/cuenta/nueva-orden');
   }
 
   protected togglePassword(): void {
@@ -52,7 +53,10 @@ export class AuthPageComponent {
     }
     const value = this.loginForm.getRawValue();
     try {
-      await this.auth.login({ email: value.email.trim(), password: value.password });
+      await this.auth.login(
+        { email: value.email.trim(), password: value.password },
+        value.rememberMe,
+      );
       await this.router.navigateByUrl(this.returnUrl());
     } catch (error) {
       this.errorKey.set(this.errorTranslation(error));
@@ -120,7 +124,7 @@ export class AuthPageComponent {
 
   private returnUrl(): string {
     const value = this.route.snapshot.queryParamMap.get('returnUrl');
-    return isSafeInternalReturnUrl(value) ? value : '/cuenta';
+    return isSafeInternalReturnUrl(value) ? value : '/cuenta/nueva-orden';
   }
 
   private errorTranslation(error: unknown): string {

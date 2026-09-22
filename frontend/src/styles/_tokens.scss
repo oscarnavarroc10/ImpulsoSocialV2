@@ -8,7 +8,17 @@
   --color-surface-elevated: #e9efeb;
   --color-text: #0a0d0b;
   --color-text-muted: #56615a;
+  --color-background-elevated: #e9efeb;
+  --color-surface-secondary: #e9efeb;
+  --color-surface-selected: rgb(18 132 61 / 10%);
+  --color-text-primary: #0a0d0b;
+  --color-text-secondary: #56615a;
+  --color-text-accent: #0b6b31;
+  --color-heading: #0a0d0b;
+  --color-heading-accent: #0b6b31;
+  --color-link: #0b6b31;
   --color-border: #d4ddd7;
+  --color-border-strong: #0b6b31;
   --color-success: #12843d;
   --color-warning: #9a6700;
   --color-danger: #b42318;
@@ -19,6 +29,11 @@
   --color-auth-text: #f6fff9;
   --shadow-soft: 0 24px 70px rgb(13 43 27 / 12%);
   --shadow-card: 0 12px 34px rgb(13 43 27 / 8%);
+  --shadow-popover: 0 22px 58px rgb(13 43 27 / 14%);
+  --gradient-background: linear-gradient(135deg, #f7fbff, #e7f0ff);
+  --gradient-accent: linear-gradient(135deg, #0b6b31, #1db954);
+  --gradient-cta: linear-gradient(135deg, #12843d, #1db954);
+  --gradient-heading: linear-gradient(135deg, #0b6b31, #1db954);
   --radius-control: 12px;
   --radius-card: 18px;
   --radius-feature: 28px;
@@ -39,20 +54,14 @@
   --shadow-card: 0 12px 34px rgb(13 43 27 / 8%);
 }
 
-[data-theme-preset='minimal'] {
+[data-theme-preset='girly'] {
   --radius-control: 6px;
-  --radius-card: 10px;
-  --radius-feature: 14px;
-}
-
-[data-theme-preset='x'] {
-  --radius-control: 999px;
-  --radius-card: 16px;
+  --radius-card: 14px;
   --radius-feature: 22px;
 }
 
-[data-theme-preset='instagram'] {
+[data-theme-preset='tomboy'] {
   --radius-control: 14px;
-  --radius-card: 22px;
-  --radius-feature: 30px;
+  --radius-card: 12px;
+  --radius-feature: 18px;
 }

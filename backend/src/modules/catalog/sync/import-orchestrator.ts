@@ -15,6 +15,8 @@ import {
   StagedServiceRepository,
 } from '../infrastructure/staged-service.repository';
 import { BULKFOLLOWS_PROVIDER_ORIGIN } from '../infrastructure/bulkfollows.client';
+import { CategoryRepository } from '../infrastructure/category.repository';
+import { normalizeProviderTaxonomy } from '../application/taxonomy-normalizer';
 
 export interface ImportOrchestratorSummary {
   total: number;
@@ -64,6 +66,7 @@ export class ImportOrchestrator {
     private readonly providerClient: ProviderCatalogClient,
     private readonly providerServiceRepository: ProviderServiceRepository,
     private readonly stagedServiceRepository: StagedServiceRepository,
+    private readonly categoryRepository: CategoryRepository,
   ) {}
 
   async run(): Promise<ImportOrchestratorSummary> {
@@ -95,7 +98,7 @@ export class ImportOrchestrator {
     };
 
     const preparationStartedAt = Date.now();
-    const preparedPayloads = this.preparePayloads(payloads, summary);
+    const preparedPayloads = await this.preparePayloads(payloads, summary);
 
     this.logDuration(
       'Prepare provider payloads',
@@ -391,7 +394,14 @@ export class ImportOrchestrator {
   private preparePayloads(
     payloads: ProviderServicePayload[],
     summary: ImportOrchestratorSummary,
-  ): PreparedPayload[] {
+  ): Promise<PreparedPayload[]> {
+    return this.preparePayloadsAsync(payloads, summary);
+  }
+
+  private async preparePayloadsAsync(
+    payloads: ProviderServicePayload[],
+    summary: ImportOrchestratorSummary,
+  ): Promise<PreparedPayload[]> {
     const prepared: PreparedPayload[] = [];
     const seenExternalIds = new Set<string>();
 
@@ -417,8 +427,19 @@ export class ImportOrchestrator {
         continue;
       }
 
+      const taxonomy = normalizeProviderTaxonomy(payload.rawPayload);
+      const category = taxonomy
+        ? await this.categoryRepository.findOrCreateByName(
+            taxonomy.categoryName,
+          )
+        : null;
+
       prepared.push({
-        payload,
+        payload: {
+          ...payload,
+          categoryId: category?.id ?? payload.categoryId,
+          socialNetwork: taxonomy?.socialNetwork ?? payload.socialNetwork,
+        },
         rawPayload: payload.rawPayload,
       });
     }

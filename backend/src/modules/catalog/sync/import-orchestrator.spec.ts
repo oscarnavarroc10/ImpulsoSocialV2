@@ -55,6 +55,10 @@ describe('ImportOrchestrator', () => {
         ),
     };
 
+    const categoryRepository = {
+      findOrCreateByName: jest.fn().mockResolvedValue(null),
+    };
+
     const stagedServiceRepository = {
       findPendingByProviderServiceIds: jest.fn().mockResolvedValue([]),
 
@@ -75,6 +79,7 @@ describe('ImportOrchestrator', () => {
       providerClient,
       providerServiceRepository as unknown as ProviderServiceRepository,
       stagedServiceRepository as unknown as StagedServiceRepository,
+      categoryRepository as never,
     );
 
     return {
@@ -82,6 +87,7 @@ describe('ImportOrchestrator', () => {
       providerClient,
       providerServiceRepository,
       stagedServiceRepository,
+      categoryRepository,
     };
   }
 
@@ -204,6 +210,41 @@ describe('ImportOrchestrator', () => {
       expect.objectContaining({
         providerServiceId: 'provider-service-7',
         title: 'Followers',
+      }),
+    ]);
+  });
+
+  it('stages normalized platform and canonical category without changing raw provider data', async () => {
+    const {
+      orchestrator,
+      providerClient,
+      providerServiceRepository,
+      stagedServiceRepository,
+      categoryRepository,
+    } = buildDeps();
+    const rawPayload = {
+      service: 15057,
+      name: 'TikTok - Likes ~ HQ ~ REFILL 30D',
+      category: 'TikTok - Likes+Followers [ Newly Added ]',
+    };
+    providerClient.fetchServices.mockResolvedValue([
+      buildPayload({ externalId: '15057', rawPayload }),
+    ]);
+    categoryRepository.findOrCreateByName.mockResolvedValue({
+      id: 'category-likes',
+    });
+
+    await orchestrator.run();
+
+    expect(providerServiceRepository.createMany).toHaveBeenCalledWith([
+      expect.objectContaining({ rawPayload }),
+    ]);
+    expect(categoryRepository.findOrCreateByName).toHaveBeenCalledWith('Likes');
+    expect(stagedServiceRepository.createManyPending).toHaveBeenCalledWith([
+      expect.objectContaining({
+        providerServiceId: 'provider-service-15057',
+        categoryId: 'category-likes',
+        socialNetwork: 'TikTok',
       }),
     ]);
   });

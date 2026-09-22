@@ -8,6 +8,7 @@ import { MasterServiceRepository } from '../infrastructure/master-service.reposi
 import { ProviderServiceRepository } from '../infrastructure/provider-service.repository';
 import { StagedServiceRepository } from '../infrastructure/staged-service.repository';
 import { StagedCurationDto } from './dto/staged-curation.dto';
+import { CatalogPricingConfigurationRepository } from '../infrastructure/catalog-pricing-configuration.repository';
 
 const PLATFORM_BASE_CURRENCY = 'PLATFORM_BASE_CURRENCY';
 const BULKFOLLOWS_RATE_CURRENCY = 'BULKFOLLOWS_RATE_CURRENCY';
@@ -15,6 +16,26 @@ const BULKFOLLOWS_TO_PLATFORM_EXCHANGE_RATE =
   'BULKFOLLOWS_TO_PLATFORM_EXCHANGE_RATE';
 const MAX_DECIMAL_PLACES = 8;
 const PRISMA_INT_MAX = 2_147_483_647n;
+export const SUPPORTED_PUBLIC_PLATFORMS = [
+  'Instagram',
+  'TikTok',
+  'YouTube',
+  'Facebook',
+] as const;
+
+export type PromotionReport = {
+  eligible: number;
+  byPlatform: Record<(typeof SUPPORTED_PUBLIC_PLATFORMS)[number], number>;
+  unclassified: number;
+  unsupported: number;
+  alreadyApproved: number;
+  createdMasterService: number;
+  updatedMasterService: number;
+  approvedStagedService: number;
+  skipped: number;
+  failed: number;
+  failures: Array<{ stagedServiceId: string; message: string }>;
+};
 
 type ParsedDecimal = {
   unscaled: bigint;
@@ -53,8 +74,7 @@ function parsePositiveDecimal(
 
   const [wholePart, fractionalPart = ''] = raw.split('.');
   const scale = 10n ** BigInt(fractionalPart.length);
-  const unscaled =
-    BigInt(wholePart) * scale + BigInt(fractionalPart || '0');
+  const unscaled = BigInt(wholePart) * scale + BigInt(fractionalPart || '0');
 
   if (unscaled <= 0n) {
     throw new BadRequestException(errorMessage);
@@ -94,14 +114,12 @@ function roundToMinorUnits(decimal: ParsedDecimal): number {
 function calculateSellingPriceMinorUnits(
   providerRate: ParsedDecimal,
   exchangeRate: ParsedDecimal,
-  multiplier: number,
+  multiplier: ParsedDecimal,
 ): number {
   const numerator =
-    providerRate.unscaled *
-    exchangeRate.unscaled *
-    BigInt(multiplier) *
-    100n;
-  const denominator = providerRate.scale * exchangeRate.scale;
+    providerRate.unscaled * exchangeRate.unscaled * multiplier.unscaled * 100n;
+  const denominator =
+    providerRate.scale * exchangeRate.scale * multiplier.scale;
   const roundedUp = (numerator + denominator - 1n) / denominator;
 
   return toPrismaInt(
@@ -117,10 +135,126 @@ export class CurationService {
     private readonly providerServiceRepository: ProviderServiceRepository,
     private readonly masterServiceRepository: MasterServiceRepository,
     private readonly auditService: AuditService,
+    private readonly catalogPricingConfigurationRepository: CatalogPricingConfigurationRepository,
   ) {}
 
   async listPending(limit = 100) {
     return this.stagedServiceRepository.findPending(limit);
+  }
+
+  async previewPromotion(): Promise<PromotionReport> {
+    const records = await this.stagedServiceRepository.findPromotionRecords();
+    const report = this.createPromotionReport();
+
+    for (const stagedService of records) {
+      if (stagedService.reviewStatus !== 'pending') {
+        if (stagedService.reviewStatus === 'approved') {
+          report.alreadyApproved += 1;
+        }
+        continue;
+      }
+
+      const network = stagedService.proposedSocialNetwork;
+      const categoryId = stagedService.proposedCategoryId;
+
+      if (!network || !categoryId) {
+        report.unclassified += 1;
+        continue;
+      }
+      if (!this.isSupportedPlatform(network)) {
+        report.unsupported += 1;
+        continue;
+      }
+      report.eligible += 1;
+      report.byPlatform[network] += 1;
+    }
+
+    return report;
+  }
+
+  async promotePending(actorId: string): Promise<PromotionReport> {
+    const sellingPriceMultiplier = parsePositiveDecimal(
+      await this.catalogPricingConfigurationRepository.findSellingPriceMultiplier(),
+      'Persisted catalog pricing multiplier is invalid',
+    );
+    const records = await this.stagedServiceRepository.findPromotionRecords();
+    const report = this.createPromotionReport();
+
+    for (const stagedService of records) {
+      if (stagedService.reviewStatus !== 'pending') {
+        if (stagedService.reviewStatus === 'approved') {
+          report.alreadyApproved += 1;
+        }
+        report.skipped += 1;
+        continue;
+      }
+
+      const network = stagedService.proposedSocialNetwork;
+      const categoryId = stagedService.proposedCategoryId;
+
+      if (!network || !categoryId) {
+        report.unclassified += 1;
+        report.skipped += 1;
+        continue;
+      }
+      if (!this.isSupportedPlatform(network)) {
+        report.unsupported += 1;
+        report.skipped += 1;
+        continue;
+      }
+      report.eligible += 1;
+      report.byPlatform[network] += 1;
+
+      try {
+        const providerPayload = this.readProviderPayload(
+          stagedService.providerService.rawPayload,
+        );
+        const title =
+          stagedService.proposedTitle ??
+          (typeof providerPayload.name === 'string'
+            ? providerPayload.name
+            : stagedService.providerService.externalId);
+        const description =
+          stagedService.proposedDescription ??
+          (typeof providerPayload.description === 'string'
+            ? providerPayload.description
+            : typeof providerPayload.name === 'string'
+              ? providerPayload.name
+              : title);
+        const existing = await this.masterServiceRepository.findByProvenance(
+          stagedService.providerServiceId,
+        );
+
+        await this.approve(
+          actorId,
+          {
+            stagedServiceId: stagedService.id,
+            action: 'approve',
+            curatedTitle: title,
+            curatedDescription: description,
+            curatedCategoryId: categoryId,
+            curatedSocialNetwork: network,
+            isVisible: true,
+          },
+          sellingPriceMultiplier,
+        );
+
+        if (existing) {
+          report.updatedMasterService += 1;
+        } else {
+          report.createdMasterService += 1;
+        }
+        report.approvedStagedService += 1;
+      } catch (error: unknown) {
+        report.failed += 1;
+        report.failures.push({
+          stagedServiceId: stagedService.id,
+          message: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    return report;
   }
 
   async curate(actorId: string, dto: StagedCurationDto) {
@@ -129,7 +263,44 @@ export class CurationService {
       : this.reject(actorId, dto.stagedServiceId);
   }
 
-  private async approve(actorId: string, dto: StagedCurationDto) {
+  private createPromotionReport(): PromotionReport {
+    return {
+      eligible: 0,
+      byPlatform: {
+        Instagram: 0,
+        TikTok: 0,
+        YouTube: 0,
+        Facebook: 0,
+      },
+      unclassified: 0,
+      unsupported: 0,
+      alreadyApproved: 0,
+      createdMasterService: 0,
+      updatedMasterService: 0,
+      approvedStagedService: 0,
+      skipped: 0,
+      failed: 0,
+      failures: [],
+    };
+  }
+
+  private isSupportedPlatform(
+    value: string,
+  ): value is (typeof SUPPORTED_PUBLIC_PLATFORMS)[number] {
+    return (SUPPORTED_PUBLIC_PLATFORMS as readonly string[]).includes(value);
+  }
+
+  private readProviderPayload(rawPayload: unknown): Record<string, unknown> {
+    return rawPayload && typeof rawPayload === 'object'
+      ? (rawPayload as Record<string, unknown>)
+      : {};
+  }
+
+  private async approve(
+    actorId: string,
+    dto: StagedCurationDto,
+    persistedMultiplier?: ParsedDecimal,
+  ) {
     const stagedService = await this.stagedServiceRepository.findById(
       dto.stagedServiceId,
     );
@@ -157,7 +328,7 @@ export class CurationService {
     let defaultSellingPriceAmount: number;
     let defaultSellingPriceCurrency: string;
 
-    if (dto.sellingPriceMultiplier != null) {
+    if (persistedMultiplier != null || dto.sellingPriceMultiplier != null) {
       const exchangeRate =
         providerCostCurrency === platformBaseCurrency
           ? { unscaled: 1n, scale: 1n }
@@ -169,7 +340,11 @@ export class CurationService {
       defaultSellingPriceAmount = calculateSellingPriceMinorUnits(
         providerRate,
         exchangeRate,
-        dto.sellingPriceMultiplier,
+        persistedMultiplier ??
+          parsePositiveDecimal(
+            dto.sellingPriceMultiplier,
+            'Selling price multiplier is invalid',
+          ),
       );
       defaultSellingPriceCurrency = platformBaseCurrency;
     } else {
@@ -232,10 +407,16 @@ export class CurationService {
         defaultSellingPriceAmount: approvalData.defaultSellingPriceAmount,
         defaultSellingPriceCurrency: approvalData.defaultSellingPriceCurrency,
         pricingStrategy:
-          dto.sellingPriceMultiplier == null ? 'manual' : 'multiplier',
-        ...(dto.sellingPriceMultiplier == null
-          ? {}
-          : { sellingPriceMultiplier: dto.sellingPriceMultiplier }),
+          persistedMultiplier != null
+            ? 'persistedMultiplier'
+            : dto.sellingPriceMultiplier == null
+              ? 'manual'
+              : 'multiplier',
+        ...(persistedMultiplier != null
+          ? { sellingPriceMultiplier: persistedMultiplier.unscaled.toString() }
+          : dto.sellingPriceMultiplier == null
+            ? {}
+            : { sellingPriceMultiplier: dto.sellingPriceMultiplier }),
         isVisible: approvalData.isVisible,
       },
       providerCost: {

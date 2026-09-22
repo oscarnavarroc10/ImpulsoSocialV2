@@ -1,15 +1,19 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { guestGuard } from './core/auth/guest.guard';
+import { publicHomeGuard } from './core/auth/public-home.guard';
 
 export const routes: Routes = [
   {
     path: 'login',
+    canActivate: [guestGuard],
     loadComponent: () =>
       import('./features/auth/auth-page.component').then((module) => module.AuthPageComponent),
     data: { mode: 'login' },
   },
   {
     path: 'registro',
+    canActivate: [guestGuard],
     loadComponent: () =>
       import('./features/auth/auth-page.component').then((module) => module.AuthPageComponent),
     data: { mode: 'register' },
@@ -23,6 +27,55 @@ export const routes: Routes = [
       import('./features/account/account-dashboard.component').then(
         (module) => module.AccountDashboardComponent,
       ),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        redirectTo: 'nueva-orden',
+      },
+      {
+        path: 'nueva-orden',
+        loadComponent: () =>
+          import('./features/account/customer-new-order.component').then(
+            (module) => module.CustomerNewOrderComponent,
+          ),
+      },
+      {
+        path: 'ordenes',
+        loadComponent: () =>
+          import('./features/account/customer-orders.component').then(
+            (module) => module.CustomerOrdersComponent,
+          ),
+      },
+      {
+        path: 'servicios',
+        loadComponent: () =>
+          import('./features/account/customer-services.component').then(
+            (module) => module.CustomerServicesComponent,
+          ),
+      },
+      {
+        path: 'saldo',
+        loadComponent: () =>
+          import('./features/account/customer-wallet.component').then(
+            (module) => module.CustomerWalletComponent,
+          ),
+      },
+      {
+        path: 'soporte',
+        loadComponent: () =>
+          import('./features/account/customer-support.component').then(
+            (module) => module.CustomerSupportComponent,
+          ),
+      },
+      {
+        path: 'perfil',
+        loadComponent: () =>
+          import('./features/account/customer-profile.component').then(
+            (module) => module.CustomerProfileComponent,
+          ),
+      },
+    ],
   },
   {
     path: '',
@@ -34,6 +87,7 @@ export const routes: Routes = [
       {
         path: '',
         pathMatch: 'full',
+        canActivate: [publicHomeGuard],
         loadComponent: () =>
           import('./features/home/home.component').then((module) => module.HomeComponent),
       },

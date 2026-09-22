@@ -308,11 +308,15 @@ function createHarness() {
   const auditService = {
     recordCuration: jest.fn(async () => true),
   };
+  const catalogPricingConfigurationRepository = {
+    findSellingPriceMultiplier: jest.fn().mockResolvedValue('1.0'),
+  };
 
   const importOrchestrator = new ImportOrchestrator(
     providerClient,
     providerServiceRepository as any,
     stagedServiceRepository as any,
+    { findOrCreateByName: jest.fn().mockResolvedValue(null) } as any,
   );
 
   const curationService = new CurationService(
@@ -320,6 +324,7 @@ function createHarness() {
     providerServiceRepository as any,
     masterServiceRepository as any,
     auditService as any,
+    catalogPricingConfigurationRepository as any,
   );
 
   return {

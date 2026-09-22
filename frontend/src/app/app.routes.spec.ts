@@ -1,3 +1,4 @@
+import '@angular/compiler';
 import { describe, expect, it } from 'vitest';
 import { routes } from './app.routes';
 
@@ -13,6 +14,15 @@ describe('public routes', () => {
     expect(children.map((route) => route.path)).toEqual(
       expect.arrayContaining(['', 'services', 'about', 'faq']),
     );
+  });
+
+  it('defines the authenticated customer destinations as child routes', () => {
+    const account = routes.find((route) => route.path === 'cuenta');
+    expect(account?.children?.find((route) => route.path === '')?.redirectTo).toBe('nueva-orden');
+    expect(account?.children?.map((route) => route.path)).toEqual(
+      expect.arrayContaining(['', 'nueva-orden', 'ordenes', 'servicios', 'saldo', 'soporte']),
+    );
+    expect(account?.children?.slice(1).every((route) => route.loadComponent)).toBe(true);
   });
 
   it('defines canonical authentication and account routes explicitly', () => {
