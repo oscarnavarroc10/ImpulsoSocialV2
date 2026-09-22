@@ -13,6 +13,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { CatalogApiService } from '../../core/customer/catalog-api.service';
+import { TenantConfigService } from '../../core/config/tenant-config.service';
 import { OrdersApiService } from '../../core/customer/orders-api.service';
 import { CustomerBalanceStore } from '../../core/customer/customer-balance.store';
 import {
@@ -35,6 +36,14 @@ import { IconComponent } from '../../shared/ui/icon.component';
         <h1>{{ 'account.newOrderTitle' | transloco }}</h1>
         <p>{{ 'account.newOrderIntro' | transloco }}</p>
       </div>
+      @if (tenant.config()?.brand?.heroDecorationUrl; as decorationUrl) {
+        <img
+          class="customer-order-heading__decoration"
+          [src]="decorationUrl"
+          alt=""
+          aria-hidden="true"
+        />
+      }
     </section>
     <ol class="customer-order-steps" [attr.aria-label]="'account.orderFlow' | transloco">
       <li
@@ -137,6 +146,7 @@ import { IconComponent } from '../../shared/ui/icon.component';
                   (click)="toggleCategory($event)"
                   (keydown)="categoryKeydown($event)"
                 >
+                  <app-icon [name]="categoryIcon()" />
                   <span>{{ selectedCategoryLabel() }}</span
                   ><app-icon name="arrowRight" />
                 </button>
@@ -158,6 +168,7 @@ import { IconComponent } from '../../shared/ui/icon.component';
                   (click)="toggleService($event)"
                   (keydown)="serviceKeydown($event)"
                 >
+                  <app-icon name="orders" />
                   <span>{{ selectedServiceLabel() }}</span
                   ><app-icon name="arrowRight" />
                 </button>
@@ -168,28 +179,34 @@ import { IconComponent } from '../../shared/ui/icon.component';
           <section class="account-card customer-order-form-card">
             <div class="form-field">
               <label for="order-target">{{ 'account.target' | transloco }}</label>
-              <input
-                id="order-target"
-                type="url"
-                formControlName="target"
-                [placeholder]="'account.targetPlaceholder' | transloco"
-                autocomplete="url"
-              />
+              <div class="customer-order-input-shell">
+                <app-icon name="link" />
+                <input
+                  id="order-target"
+                  type="url"
+                  formControlName="target"
+                  [placeholder]="'account.targetPlaceholder' | transloco"
+                  autocomplete="url"
+                />
+              </div>
               @if (form.controls.target.touched && form.controls.target.invalid) {
                 <small class="form-error">{{ 'account.targetInvalid' | transloco }}</small>
               }
             </div>
             <div class="form-field">
               <label for="order-quantity">{{ 'account.quantity' | transloco }}</label>
-              <input
-                id="order-quantity"
-                type="number"
-                formControlName="quantity"
-                inputmode="numeric"
-                [min]="service()?.minQuantity ?? 1"
-                [max]="service()?.maxQuantity ?? null"
-                placeholder="{{ 'account.quantityPlaceholder' | transloco }}"
-              />
+              <div class="customer-order-input-shell">
+                <app-icon name="hash" />
+                <input
+                  id="order-quantity"
+                  type="number"
+                  formControlName="quantity"
+                  inputmode="numeric"
+                  [min]="service()?.minQuantity ?? 1"
+                  [max]="service()?.maxQuantity ?? null"
+                  placeholder="{{ 'account.quantityPlaceholder' | transloco }}"
+                />
+              </div>
               <small
                 >{{ 'account.quantityRange' | transloco }}:
                 {{
@@ -400,6 +417,7 @@ export class CustomerNewOrderComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly catalog = inject(CatalogApiService);
+  protected readonly tenant = inject(TenantConfigService);
   private readonly orders = inject(OrdersApiService);
   private readonly balanceStore = inject(CustomerBalanceStore);
   private readonly destroyRef = inject(DestroyRef);
@@ -562,6 +580,15 @@ export class CustomerNewOrderComponent {
     if (normalized.includes('youtube')) return 'youtube';
     if (normalized.includes('facebook')) return 'facebook';
     return 'instagram';
+  }
+
+  protected categoryIcon(): 'followers' | 'likes' | 'comments' | 'views' | 'reposts' {
+    const category = this.selectedCategoryLabel().toLowerCase();
+    if (category.includes('comment')) return 'comments';
+    if (category.includes('share') || category.includes('repost')) return 'reposts';
+    if (category.includes('like')) return 'likes';
+    if (category.includes('view')) return 'views';
+    return 'followers';
   }
 
   protected categoryKeydown(event: KeyboardEvent): void {

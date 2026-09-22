@@ -25,6 +25,8 @@ export type IconKey =
   | 'google'
   | 'apple'
   | 'eye'
+  | 'link'
+  | 'hash'
   | 'mail'
   | 'lock'
   | 'user'
@@ -106,6 +108,7 @@ export interface TenantUiConfig {
     logoDarkUrl?: string;
     personalityLogoUrls?: Partial<Record<'girly' | 'tomboy', string>>;
     faviconUrl?: string;
+    heroDecorationUrl?: string;
   };
   theme: {
     defaultPreference: ThemePreference;

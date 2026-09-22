@@ -47,6 +47,8 @@ export const iconKeys = [
   'google',
   'apple',
   'eye',
+  'link',
+  'hash',
   'mail',
   'lock',
   'user',

@@ -6,6 +6,7 @@
     "name": "ImpulsoSocial",
     "shortName": "ImpulsoSocial",
     "taglineKey": "home.tagline",
+    "heroDecorationUrl": "/branding/impulsosocial/hero-decoration.svg",
     "personalityLogoUrls": {
       "girly": "/assets/branding/impulsocuentas/logo-girly.png",
       "tomboy": "/assets/branding/impulsocuentas/logo-tomboy.png"

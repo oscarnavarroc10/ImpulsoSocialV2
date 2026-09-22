@@ -171,12 +171,31 @@
   }
 
   .customer-order-steps {
-    gap: 6px;
+    gap: 8px;
+    margin: 10px 0 14px;
   }
 
   .customer-order-steps li {
     justify-content: center;
-    padding-inline: 5px;
+    gap: 5px;
+    padding-top: 0;
+  }
+
+  .customer-order-steps li:not(:last-child)::after {
+    right: -8px;
+    left: 22px;
+  }
+
+  .customer-order-steps li > span {
+    gap: 0;
+  }
+
+  .customer-order-steps small {
+    display: none;
+  }
+
+  .customer-order-steps strong {
+    font-size: 0.72rem;
   }
 
   .customer-order-context {
@@ -205,6 +224,8 @@
 
   .customer-order-heading {
     align-items: flex-start;
+    margin-bottom: 0;
+    min-height: 0;
   }
 
   .customer-balance-inline {
@@ -455,13 +476,13 @@
     display: inline-flex;
     height: var(--mobile-header-control-height);
     min-width: 0;
-    max-width: min(24vw, 180px);
+    max-width: min(27vw, 180px);
     align-items: center;
     overflow: hidden;
   }
 
   .account-mobile-brand .brand-image {
-    max-width: min(24vw, 180px);
+    max-width: min(27vw, 180px);
     height: var(--mobile-header-control-height);
     object-fit: contain;
   }
@@ -543,7 +564,7 @@
     flex: 0 0 auto;
     gap: 5px;
     margin-left: 0;
-    padding: 4px 24px 4px 7px;
+    padding: 4px 7px;
   }
 
   .account-topbar-balance__label--desktop {
@@ -563,9 +584,10 @@
   }
 
   .account-topbar-balance__add {
-    right: 6px;
     width: 19px;
     height: 19px;
+    flex-basis: 19px;
+    margin-left: 7px;
     font-size: 0.9rem;
   }
 
@@ -577,6 +599,13 @@
   .account-main {
     min-width: 0;
     overflow-x: clip;
+  }
+
+  @media (max-width: 375px) {
+    .account-mobile-brand,
+    .account-mobile-brand .brand-image {
+      max-width: min(24vw, 180px);
+    }
   }
 
   .customer-combobox-menu {
@@ -1009,33 +1038,60 @@
   }
 
   .customer-order-heading p {
-    font-size: 0.9rem;
-    line-height: 1.4;
+    max-width: 42ch;
+    font-size: 0.82rem;
+    line-height: 1.3;
+  }
+
+  .customer-order-heading__decoration {
+    width: 76px;
+    height: 58px;
+    margin-top: 2px;
   }
 
   .customer-order-form-card {
-    gap: 14px;
-    padding: 18px;
+    gap: 12px;
+    padding: 14px;
   }
 
   .customer-order-choice-grid {
     gap: 6px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .customer-order-choice {
     display: flex;
-    min-height: 46px;
+    min-width: 0;
+    min-height: 44px;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    padding: 8px;
-    font-size: 0.84rem;
+    gap: 3px;
+    overflow: hidden;
+    padding: 6px 3px;
+    font-size: 0.68rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .customer-order-choice .icon {
-    width: 18px;
-    height: 18px;
+    width: 15px;
+    height: 15px;
+    flex: 0 0 15px;
+  }
+
+  .customer-order-choice strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .customer-order-form-card input,
+  .customer-combobox-trigger {
+    min-height: 44px;
+  }
+
+  .customer-order-input-shell {
+    min-height: 44px;
+    padding-inline: 10px;
   }
 
   .customer-catalog-section,
