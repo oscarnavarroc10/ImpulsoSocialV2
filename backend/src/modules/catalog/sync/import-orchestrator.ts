@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type {
   ProviderCatalogClient,
+  ProviderCatalogClientResolver,
   ProviderServicePayload,
 } from '../infrastructure/provider-catalog-client';
 import { PROVIDER_CATALOG_CLIENT } from '../infrastructure/provider-catalog-client';
@@ -64,7 +65,8 @@ export class ImportOrchestrator {
 
   constructor(
     @Inject(PROVIDER_CATALOG_CLIENT)
-    private readonly providerClient: ProviderCatalogClient,
+    private readonly providerClient:
+      ProviderCatalogClient | ProviderCatalogClientResolver,
     private readonly providerServiceRepository: ProviderServiceRepository,
     private readonly stagedServiceRepository: StagedServiceRepository,
     private readonly categoryRepository: CategoryRepository,
@@ -72,17 +74,23 @@ export class ImportOrchestrator {
     private readonly offeringRepository?: MasterServiceProviderOfferingRepository,
   ) {}
 
-  async run(): Promise<ImportOrchestratorSummary> {
+  async run(providerOrigin?: string): Promise<ImportOrchestratorSummary> {
     const totalStartedAt = Date.now();
 
-    if (!this.providerClient.fetchServices) {
+    const client = this.resolveClient(providerOrigin);
+    if (!client?.fetchServices) {
       throw new Error(
         'Configured provider client does not implement fetchServices',
       );
     }
 
     const fetchStartedAt = Date.now();
-    const payloads = await this.providerClient.fetchServices();
+    const snapshot = client.fetchServicesSnapshot
+      ? await client.fetchServicesSnapshot()
+      : { complete: true, services: await client.fetchServices() };
+    const payloads = snapshot.services;
+    const resolvedProviderOrigin =
+      client.providerOrigin ?? BULKFOLLOWS_PROVIDER_ORIGIN;
 
     this.logDuration(
       'Fetch provider services',
@@ -110,8 +118,11 @@ export class ImportOrchestrator {
     );
 
     if (preparedPayloads.length === 0) {
-      if (payloads.length === 0 && summary.failed === 0) {
-        await this.offeringRepository?.disableUnavailableProviderServices([]);
+      if (snapshot.complete && payloads.length === 0 && summary.failed === 0) {
+        await this.offeringRepository?.disableUnavailableProviderServices(
+          [],
+          resolvedProviderOrigin,
+        );
       }
       this.logDuration('Total import', totalStartedAt, summary.total);
       return summary;
@@ -125,7 +136,7 @@ export class ImportOrchestrator {
 
     const existingProviderServices =
       await this.providerServiceRepository.findManyByOriginAndExternalIds(
-        BULKFOLLOWS_PROVIDER_ORIGIN,
+        resolvedProviderOrigin,
         externalIds,
       );
 
@@ -146,7 +157,7 @@ export class ImportOrchestrator {
 
     for (const prepared of preparedPayloads) {
       const item: ProviderServiceBatchItem = {
-        providerOrigin: BULKFOLLOWS_PROVIDER_ORIGIN,
+        providerOrigin: resolvedProviderOrigin,
         externalId: prepared.payload.externalId,
         rawPayload: prepared.rawPayload,
       };
@@ -214,7 +225,7 @@ export class ImportOrchestrator {
 
     const persistedProviderServices =
       await this.providerServiceRepository.findManyByOriginAndExternalIds(
-        BULKFOLLOWS_PROVIDER_ORIGIN,
+        resolvedProviderOrigin,
         [...successfulExternalIds],
       );
 
@@ -392,15 +403,27 @@ export class ImportOrchestrator {
       stagedItemsToCreate.length + stagedItemsToUpdate.length,
     );
 
-    if (this.offeringRepository && summary.failed === 0) {
+    if (this.offeringRepository && snapshot.complete && summary.failed === 0) {
       await this.offeringRepository.disableUnavailableProviderServices(
         providerServicesToStage.map((service) => service.id),
+        resolvedProviderOrigin,
       );
     }
 
     this.logDuration('Total import', totalStartedAt, summary.total);
 
     return summary;
+  }
+
+  private resolveClient(providerOrigin?: string): ProviderCatalogClient | null {
+    if ('resolve' in this.providerClient) {
+      return this.providerClient.resolve(
+        providerOrigin ??
+          process.env.CATALOG_PROVIDER_ORIGIN ??
+          BULKFOLLOWS_PROVIDER_ORIGIN,
+      );
+    }
+    return this.providerClient;
   }
 
   private preparePayloads(

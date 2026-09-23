@@ -98,13 +98,18 @@ export class MasterServiceProviderOfferingRepository {
     );
   }
 
-  async disableUnavailableProviderServices(providerServiceIds: string[]) {
+  async disableUnavailableProviderServices(
+    providerServiceIds: string[],
+    providerOrigin = 'bulkfollows',
+  ) {
     return this.prisma.masterServiceProviderOffering.updateMany({
       where: {
         ...(providerServiceIds.length > 0
           ? { providerServiceId: { notIn: providerServiceIds } }
           : {}),
-        providerService: { providerOrigin: 'bulkfollows' },
+        providerService: {
+          providerOrigin,
+        },
         isAvailable: true,
       },
       data: { isAvailable: false },

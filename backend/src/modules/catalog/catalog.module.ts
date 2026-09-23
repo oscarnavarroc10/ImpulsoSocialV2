@@ -10,6 +10,7 @@ import { ImportOrchestrator } from './sync/import-orchestrator';
 import { CatalogAuthorizationGuard } from './security/catalog-authorization.guard';
 import { CATALOG_AUTHORIZATION } from './security/catalog-authorization.interface';
 import { BulkFollowsClient } from './infrastructure/bulkfollows.client';
+import { SmmgenClient } from './infrastructure/smmgen.client';
 import { PROVIDER_CATALOG_CLIENT } from './infrastructure/provider-catalog-client';
 import { CurationService } from './application/curation.service';
 import { StagedServiceController } from './presentation/staged-service.controller';
@@ -37,6 +38,7 @@ import { PublicCatalogController } from './presentation/public-catalog.controlle
 import { MasterServiceProviderOfferingRepository } from './infrastructure/master-service-provider-offering.repository';
 import { MasterServiceProviderOfferingService } from './application/master-service-provider-offering.service';
 import { ProviderOfferingBackfillService } from './application/provider-offering-backfill.service';
+import { SmmgenReconciliationService } from './infrastructure/smmgen-reconciliation.service';
 
 // Minimal fail-closed adapter for missing external authorization integration.
 /*const FailClosedAuthProvider = {
@@ -87,13 +89,22 @@ import { ProviderOfferingBackfillService } from './application/provider-offering
       useClass: CatalogAuthorizationService,
     },
     BulkFollowsClient,
-    { provide: PROVIDER_CATALOG_CLIENT, useExisting: BulkFollowsClient },
+    SmmgenClient,
+    {
+      provide: PROVIDER_CATALOG_CLIENT,
+      useFactory: (bulk: BulkFollowsClient, smmgen: SmmgenClient) => ({
+        resolve: (origin: string) =>
+          origin === 'smmgen' ? smmgen : origin === 'bulkfollows' ? bulk : null,
+      }),
+      inject: [BulkFollowsClient, SmmgenClient],
+    },
     PublicCatalogRepository,
     PublicCatalogService,
     CatalogPricingConfigurationRepository,
     MasterServiceProviderOfferingRepository,
     MasterServiceProviderOfferingService,
     ProviderOfferingBackfillService,
+    SmmgenReconciliationService,
   ],
   exports: [
     ProviderServiceRepository,
@@ -116,6 +127,7 @@ import { ProviderOfferingBackfillService } from './application/provider-offering
     MasterServiceProviderOfferingRepository,
     MasterServiceProviderOfferingService,
     ProviderOfferingBackfillService,
+    SmmgenReconciliationService,
   ],
 })
 export class CatalogModule {}

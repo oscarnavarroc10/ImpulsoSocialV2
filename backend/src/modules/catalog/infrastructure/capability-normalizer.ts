@@ -43,6 +43,8 @@ export function normalizeBulkFollowsCapability(
   };
 }
 
+export { normalizeSmmgenCapability } from './smmgen-capability-normalizer';
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

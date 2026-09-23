@@ -3,11 +3,22 @@ export interface QuantityBounds {
   max: number;
 }
 
-export function readQuantityBounds(rawPayload: unknown, externalId: string): QuantityBounds | null {
-  if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) return null;
+export function readQuantityBounds(
+  rawPayload: unknown,
+  externalId: string,
+): QuantityBounds | null {
+  if (
+    !rawPayload ||
+    typeof rawPayload !== 'object' ||
+    Array.isArray(rawPayload)
+  )
+    return null;
 
   const record = rawPayload as Record<string, unknown>;
-  const type = typeof record['type'] === 'string' ? record['type'].trim().toLowerCase() : '';
+  const type =
+    typeof record['type'] === 'string'
+      ? record['type'].trim().toLowerCase()
+      : '';
   const min = strictInteger(record['min']);
   const max = strictInteger(record['max']);
 
@@ -39,5 +50,9 @@ function rawServiceMatches(value: unknown, externalId: string): boolean {
   if (value === undefined) return true;
   if (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0)
     return String(value) === externalId;
-  return typeof value === 'string' && /^\d+$/.test(value.trim()) && value.trim() === externalId;
+  return (
+    typeof value === 'string' &&
+    /^\d+$/.test(value.trim()) &&
+    value.trim() === externalId
+  );
 }

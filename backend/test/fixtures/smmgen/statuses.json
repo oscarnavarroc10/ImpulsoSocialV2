@@ -1,0 +1,6 @@
+{
+  "accepted": { "order": "fixture-order-01" },
+  "rejected": { "error": "recorded rejection" },
+  "processing": { "status": "processing", "start_count": "10", "remains": "990" },
+  "unknown": { "status": "future-state", "start_count": "10", "remains": "990" }
+}

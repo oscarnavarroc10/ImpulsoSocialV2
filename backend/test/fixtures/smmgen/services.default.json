@@ -1,0 +1,16 @@
+[
+  {
+    "id": "fixture-standard-01",
+    "name": "Sanitized standard service",
+    "type": "Default",
+    "min": 10,
+    "max": 1000
+  },
+  {
+    "id": "fixture-comments-01",
+    "name": "Sanitized comments service",
+    "type": "Custom Comments",
+    "min": 1,
+    "max": 100
+  }
+]

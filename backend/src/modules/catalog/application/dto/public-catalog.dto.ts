@@ -79,7 +79,10 @@ export class PublicCatalogCategoryDto {
   @ApiProperty({ description: 'Current commercial category name.' })
   name!: string;
 
-  @ApiProperty({ nullable: true, description: 'Current commercial category description.' })
+  @ApiProperty({
+    nullable: true,
+    description: 'Current commercial category description.',
+  })
   description!: string | null;
 }
 
@@ -87,7 +90,9 @@ export class PublicCatalogServiceMetadataDto {
   @ApiProperty({ description: 'Whether the provider service supports refill.' })
   refill!: boolean;
 
-  @ApiProperty({ description: 'Whether the provider service supports cancellation.' })
+  @ApiProperty({
+    description: 'Whether the provider service supports cancellation.',
+  })
   cancel!: boolean;
 }
 

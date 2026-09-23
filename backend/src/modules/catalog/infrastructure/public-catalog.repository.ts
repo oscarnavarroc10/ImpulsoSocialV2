@@ -143,7 +143,8 @@ function readProviderMetadata(
   provider: { providerOrigin: string; rawPayload: unknown } | null,
 ): PublicCatalogRow['providerMetadata'] {
   if (!provider || provider.providerOrigin !== 'bulkfollows') return null;
-  if (!provider.rawPayload || typeof provider.rawPayload !== 'object') return null;
+  if (!provider.rawPayload || typeof provider.rawPayload !== 'object')
+    return null;
 
   const payload = provider.rawPayload as Record<string, unknown>;
   const refill = payload['refill'];
@@ -269,7 +270,12 @@ export class PublicCatalogRepository {
     return new Map(
       offerings.flatMap((offering) => {
         const contract = offering.contract;
-        if (!contract || typeof contract !== 'object' || Array.isArray(contract)) return [];
+        if (
+          !contract ||
+          typeof contract !== 'object' ||
+          Array.isArray(contract)
+        )
+          return [];
         const value = contract as Record<string, unknown>;
         if (
           value.validationStatus !== 'supported' ||
@@ -278,15 +284,21 @@ export class PublicCatalogRepository {
           !Number.isSafeInteger(value.max) ||
           (value.min as number) <= 0 ||
           (value.max as number) < (value.min as number)
-        ) return [];
-        return [[
-          String(offering.masterServiceId),
-          {
-            key: 'STANDARD' as const,
-            input: { target: 'required' as const, quantity: 'required' as const },
-            quantity: { min: value.min as number, max: value.max as number },
-          },
-        ] as const];
+        )
+          return [];
+        return [
+          [
+            String(offering.masterServiceId),
+            {
+              key: 'STANDARD' as const,
+              input: {
+                target: 'required' as const,
+                quantity: 'required' as const,
+              },
+              quantity: { min: value.min as number, max: value.max as number },
+            },
+          ] as const,
+        ];
       }),
     );
   }
