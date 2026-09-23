@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, EstadoOrden, TipoMovimientoSaldo } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { readQuantityBounds } from '../../catalog/infrastructure/quantity-bounds';
+import { normalizeBulkFollowsCapability } from '../../catalog/infrastructure/capability-normalizer';
 
 export interface PurchaseInput {
   tenantId: string;
@@ -15,6 +16,11 @@ export interface PurchaseInput {
 export interface PurchaseCandidate {
   serviceId: string;
   externalId: string;
+  providerOrigin: string;
+  offeringId: string | null;
+  providerServiceId: string | null;
+  capabilityKey: 'STANDARD';
+  contractVersion: string | null;
   min: number;
   max: number;
   providerCost: number;
@@ -40,6 +46,7 @@ export interface OrderListFilters {
 export interface OrderRefreshLookup {
   order: OrderView;
   providerOrderId: string | null;
+  providerOrigin?: string | null;
 }
 export interface RefreshResult {
   providerStatus: string;
@@ -67,6 +74,19 @@ const REFRESH_STATE_RANK: Record<EstadoOrden, number> = {
 
 export class InvalidProviderContractError extends Error {}
 export class InvalidRefundBasisError extends Error {}
+
+function isStandardContract(value: unknown): value is { min: number; max: number } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const contract = value as Record<string, unknown>;
+  return (
+    contract.validationStatus === 'supported' &&
+    contract.quantityMode === 'required' &&
+    Number.isSafeInteger(contract.min) &&
+    Number.isSafeInteger(contract.max) &&
+    (contract.min as number) > 0 &&
+    (contract.max as number) >= (contract.min as number)
+  );
+}
 
 @Injectable()
 export class OrderRepository {
@@ -99,13 +119,63 @@ export class OrderRepository {
         },
       },
     });
-    if (!row?.provenanceRef) return null;
+    if (!row) return null;
+
+    const offeringDelegate = (
+      this.prisma as PrismaService & {
+        masterServiceProviderOffering?: {
+          findFirst: (args: unknown) => Promise<any>;
+          count: (args: unknown) => Promise<number>;
+        };
+      }
+    ).masterServiceProviderOffering;
     const provider = await this.prisma.providerService.findUnique({
-      where: { id: row.provenanceRef },
-      select: { providerOrigin: true, externalId: true, rawPayload: true },
+      where: { id: row.provenanceRef ?? '' },
+      select: { id: true, providerOrigin: true, externalId: true, rawPayload: true },
     });
-    if (!provider || provider.providerOrigin !== 'bulkfollows') return null;
-    const bounds = readQuantityBounds(provider.rawPayload, provider.externalId);
+    const selectedOffering = offeringDelegate
+      ? await offeringDelegate.findFirst({
+          where: {
+            masterServiceId: serviceId,
+            isEnabled: true,
+            isAvailable: true,
+            isSelected: true,
+          },
+          include: { providerService: true },
+        })
+      : null;
+    if (offeringDelegate && !selectedOffering) {
+      const offeringCount = await offeringDelegate.count({
+        where: { masterServiceId: serviceId },
+      });
+      if (offeringCount > 0) return null;
+    }
+
+    const selectedProvider = selectedOffering?.providerService ?? provider;
+    if (!selectedProvider || selectedProvider.providerOrigin !== 'bulkfollows')
+      return null;
+    const normalized = selectedOffering
+      ? selectedOffering.capabilityKey === 'STANDARD' &&
+        isStandardContract(selectedOffering.contract)
+        ? {
+            bounds: {
+              min: selectedOffering.contract.min,
+              max: selectedOffering.contract.max,
+            },
+            contractVersion: selectedOffering.contractVersion,
+          }
+        : null
+      : normalizeBulkFollowsCapability(
+          selectedProvider.rawPayload,
+          selectedProvider.externalId,
+        );
+    const bounds = normalized
+      ? 'bounds' in normalized
+        ? normalized.bounds
+        : normalized.contract.min !== undefined && normalized.contract.max !== undefined
+          ? { min: normalized.contract.min, max: normalized.contract.max }
+          : null
+      : readQuantityBounds(selectedProvider.rawPayload, selectedProvider.externalId);
     if (!bounds)
       throw new InvalidProviderContractError();
     const override = row.configuracionesTienda[0];
@@ -120,7 +190,12 @@ export class OrderRepository {
       : row.defaultSellingPriceCurrency;
     return {
       serviceId: row.id,
-      externalId: provider.externalId,
+      externalId: selectedProvider.externalId,
+      providerOrigin: selectedProvider.providerOrigin,
+      offeringId: selectedOffering?.id ?? null,
+      providerServiceId: selectedOffering?.providerServiceId ?? selectedProvider.id,
+      capabilityKey: 'STANDARD',
+      contractVersion: normalized?.contractVersion ?? null,
       min: bounds.min,
       max: bounds.max,
       providerCost: row.providerCostAmount,
@@ -195,7 +270,13 @@ export class OrderRepository {
       where: { id, tiendaId: tenantId, usuarioId: userId },
       select: {
         ...this.viewSelect,
-        ordenProveedor: { select: { idExterno: true } },
+        ordenProveedor: {
+          select: {
+            idExterno: true,
+            proveedor: true,
+            providerService: { select: { providerOrigin: true } },
+          },
+        },
       },
     });
     if (!row) return null;
@@ -203,6 +284,7 @@ export class OrderRepository {
     return {
       order: this.toView(orderFields),
       providerOrderId: ordenProveedor?.idExterno ?? null,
+      providerOrigin: ordenProveedor?.providerService?.providerOrigin ?? ordenProveedor?.proveedor ?? null,
     };
   }
 
@@ -373,6 +455,17 @@ export class OrderRepository {
           monedaProveedor: candidate.providerCurrency,
           idempotencyKey: input.key,
           requestFingerprint: input.fingerprint,
+          ...(candidate.offeringId
+            ? {
+                datosEntradaPrivada: {
+                  version: 1,
+                  capability: candidate.capabilityKey,
+                  target: input.target,
+                  quantity: input.quantity,
+                  effectiveQuantity: input.quantity,
+                },
+              }
+            : {}),
         },
         select: this.viewSelect,
       });
@@ -421,6 +514,7 @@ export class OrderRepository {
     service: string,
     target: string,
     quantity: number,
+    candidate?: PurchaseCandidate,
   ): Promise<boolean> {
     return this.prisma.$transaction(async (tx) => {
       const claimed = await tx.orden.updateMany({
@@ -439,6 +533,20 @@ export class OrderRepository {
           proveedor: 'bulkfollows',
           estadoExterno: 'sending',
           solicitudOriginal: { action: 'add', service, link: target, quantity },
+          ...(candidate?.offeringId
+            ? {
+                offeringId: candidate.offeringId,
+                providerServiceId: candidate.providerServiceId,
+                capabilityKeySnapshot: candidate.capabilityKey,
+                capabilityContractVersionSnapshot: candidate.contractVersion,
+                offeringSnapshot: {
+                  providerOrigin: candidate.providerOrigin,
+                  providerServiceId: candidate.providerServiceId,
+                  capability: candidate.capabilityKey,
+                  contractVersion: candidate.contractVersion,
+                },
+              }
+            : {}),
         },
       });
       await tx.historialOrden.create({

@@ -6,6 +6,8 @@ import {
   UnprocessableEntityException,
   Injectable,
   InternalServerErrorException,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { EstadoOrden } from '@prisma/client';
@@ -25,6 +27,8 @@ import {
   PurchaseInput,
 } from '../infrastructure/order.repository';
 import { BulkFollowsOrderClient } from '../infrastructure/bulkfollows-order.client';
+import { PROVIDER_ORDER_ADAPTER } from './provider-order-adapter';
+import type { ProviderOrderAdapter } from './provider-order-adapter';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
@@ -50,6 +54,8 @@ export class OrderService {
   constructor(
     private readonly repository: OrderRepository,
     private readonly provider: BulkFollowsOrderClient,
+    @Optional() @Inject(PROVIDER_ORDER_ADAPTER)
+    private readonly providerAdapter?: ProviderOrderAdapter,
   ) {}
 
   async list(
@@ -110,7 +116,11 @@ export class OrderService {
       throw new ConflictException('Order has no provider reference');
     if (!this.provider.isReady())
       throw new ServiceUnavailableException('Provider is not configured');
-    const result = await this.provider.status(providerOrderId);
+    if (lookup.providerOrigin && lookup.providerOrigin !== 'bulkfollows')
+      throw new ServiceUnavailableException('Provider is unavailable');
+    const result = this.providerAdapter
+      ? await this.providerAdapter.getStatus(providerOrderId)
+      : await this.provider.status(providerOrderId);
     if (result.kind !== 'ok')
       throw new BadGatewayException('Provider status is unavailable');
     const mapped =
@@ -231,7 +241,7 @@ export class OrderService {
       }
       throw error;
     }
-    return this.claimAndSubmit(order, input, candidate.externalId, false);
+    return this.claimAndSubmit(order, input, candidate, false);
   }
 
   private async replay(
@@ -243,30 +253,38 @@ export class OrderService {
     this.assertProviderReady();
     const candidate = await this.findCandidate(input);
     if (!candidate) return { order: this.publicOrder(order), statusCode: 200 };
-    return this.claimAndSubmit(order, input, candidate.externalId, true);
+    return this.claimAndSubmit(order, input, candidate, true);
   }
 
   private async claimAndSubmit(
     order: OrderResponseDto,
     input: PurchaseInput,
-    externalId: string,
+    candidate: PurchaseCandidate,
     replay: boolean,
   ): Promise<{ order: OrderResponseDto; statusCode: 200 | 201 | 202 }> {
-    if (
-      !(await this.repository.claim(
-        order.id,
-        input,
-        externalId,
-        input.target,
-        input.quantity,
-      ))
-    ) {
+    const claimed = candidate.offeringId
+      ? await this.repository.claim(
+          order.id,
+          input,
+          candidate.externalId,
+          input.target,
+          input.quantity,
+          candidate,
+        )
+      : await this.repository.claim(
+          order.id,
+          input,
+          candidate.externalId,
+          input.target,
+          input.quantity,
+        );
+    if (!claimed) {
       const current = await this.repository.findByKey(input);
       if (!current) throw new InternalServerErrorException();
       return { order: this.publicOrder(current), statusCode: 200 };
     }
     const result = await this.provider.submit(
-      externalId,
+      candidate.externalId,
       input.target,
       input.quantity,
     );

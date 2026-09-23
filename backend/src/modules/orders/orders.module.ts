@@ -6,9 +6,12 @@ import { OrderRepository } from './infrastructure/order.repository';
 import { OrderService } from './application/order.service';
 import { OrderController } from './presentation/order.controller';
 import { OrderAuthenticationGuard } from './security/order-authentication.guard';
+import { CatalogModule } from '../catalog/catalog.module';
+import { PROVIDER_ORDER_ADAPTER } from './application/provider-order-adapter';
+import { BulkFollowsOrderAdapter } from './infrastructure/bulkfollows-order.adapter';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, CatalogModule],
   controllers: [OrderController],
   providers: [
     PrismaService,
@@ -16,6 +19,8 @@ import { OrderAuthenticationGuard } from './security/order-authentication.guard'
     OrderRepository,
     OrderService,
     OrderAuthenticationGuard,
+    BulkFollowsOrderAdapter,
+    { provide: PROVIDER_ORDER_ADAPTER, useExisting: BulkFollowsOrderAdapter },
   ],
 })
 export class OrdersModule {}

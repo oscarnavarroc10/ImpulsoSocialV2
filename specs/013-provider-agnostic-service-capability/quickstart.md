@@ -9,6 +9,16 @@ This guide defines implementation-time validation scenarios. It does not authori
 - No provider credentials required. Use fake catalog/order transports and fixtures.
 - Do not populate or print `.env` secrets.
 
+## Feature 013 T004 Baseline
+
+Before the initial foundation changes, the focused backend catalog/order suites
+were run with `npm test -- --runInBand test/unit/catalog test/unit/orders
+test/contract/catalog test/contract/orders` from `backend/`. The baseline was
+196 passing tests and 2 pre-existing failures in
+`backend/test/unit/catalog/public-catalog.service.spec.ts`: both expectations
+omit the existing `socialNetwork` filter now present in the repository query.
+No provider calls or credentials were used.
+
 ## Phase checks
 
 ### 1. Schema and migration safety

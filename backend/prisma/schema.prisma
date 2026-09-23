@@ -27,6 +27,7 @@ model MasterService {
   provenanceRef               String?
 
   configuracionesTienda TenantServiceOverride[]
+  providerOfferings     MasterServiceProviderOffering[]
   ordenes               Orden[]
 }
 
@@ -38,9 +39,38 @@ model ProviderService {
   importTimestamp DateTime
   metadata        Json?
 
-  stagedServices StagedService[]
+  stagedServices       StagedService[]
+  providerOfferings    MasterServiceProviderOffering[]
+  historicalOrderLinks OrdenProveedor[] @relation("HistoricalProviderService")
 
   @@unique([providerOrigin, externalId])
+}
+
+enum CapabilityKey {
+  STANDARD
+  CUSTOM_COMMENTS
+}
+
+model MasterServiceProviderOffering {
+  id                String        @id @default(cuid())
+  masterServiceId   String
+  providerServiceId String
+  capabilityKey     CapabilityKey
+  contractVersion   String
+  contract          Json
+  isEnabled         Boolean       @default(true)
+  isAvailable       Boolean       @default(true)
+  isSelected        Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  masterService   MasterService   @relation(fields: [masterServiceId], references: [id], onDelete: Cascade)
+  providerService ProviderService @relation(fields: [providerServiceId], references: [id], onDelete: Cascade)
+  historicalOrders OrdenProveedor[] @relation("HistoricalOffering")
+
+  @@unique([masterServiceId, providerServiceId])
+  @@index([masterServiceId, isEnabled, isAvailable, isSelected])
+  @@index([providerServiceId, isEnabled, isAvailable])
 }
 
 model StagedService {
@@ -328,6 +358,7 @@ model Orden {
   actualizadaEn      DateTime    @updatedAt
   idempotencyKey     String?
   requestFingerprint String?     @db.Char(64)
+  datosEntradaPrivada Json?
 
   tienda   Tienda        @relation(fields: [tiendaId], references: [id], onDelete: Restrict)
   usuario  Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
@@ -357,11 +388,20 @@ model OrdenProveedor {
   ultimaConsultaEn  DateTime?
   creadaEn          DateTime  @default(now())
   actualizadaEn     DateTime  @updatedAt
+  offeringId        String?
+  providerServiceId String?
+  capabilityKeySnapshot String?
+  capabilityContractVersionSnapshot String?
+  offeringSnapshot  Json?
 
   orden Orden @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  offering MasterServiceProviderOffering? @relation("HistoricalOffering", fields: [offeringId], references: [id], onDelete: SetNull)
+  providerService ProviderService? @relation("HistoricalProviderService", fields: [providerServiceId], references: [id], onDelete: SetNull)
 
   @@unique([proveedor, idExterno])
   @@index([proveedor, estadoExterno])
+  @@index([offeringId, estadoExterno])
+  @@index([providerServiceId, idExterno])
   @@map("ordenes_proveedor")
 }
 

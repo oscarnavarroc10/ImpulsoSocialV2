@@ -91,6 +91,25 @@ export class PublicCatalogServiceMetadataDto {
   cancel!: boolean;
 }
 
+export class PublicCatalogCapabilityQuantityDto {
+  @ApiProperty({ example: 100 })
+  min!: number;
+
+  @ApiProperty({ example: 10000 })
+  max!: number;
+}
+
+export class PublicCatalogCapabilityDto {
+  @ApiProperty({ enum: ['STANDARD'] })
+  key!: 'STANDARD';
+
+  @ApiProperty({ example: { target: 'required', quantity: 'required' } })
+  input!: { target: 'required'; quantity: 'required' };
+
+  @ApiProperty({ type: PublicCatalogCapabilityQuantityDto })
+  quantity!: PublicCatalogCapabilityQuantityDto;
+}
+
 export class PublicCatalogServiceDto {
   @ApiProperty({
     description: 'Internal MasterService id.',
@@ -137,6 +156,9 @@ export class PublicCatalogServiceDto {
 
   @ApiPropertyOptional({ type: PublicCatalogServiceMetadataDto })
   serviceMetadata?: PublicCatalogServiceMetadataDto;
+
+  @ApiPropertyOptional({ type: PublicCatalogCapabilityDto })
+  capability?: PublicCatalogCapabilityDto;
 }
 
 export class PublicCatalogPlatformFacetDto {

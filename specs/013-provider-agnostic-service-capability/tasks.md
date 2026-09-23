@@ -10,22 +10,22 @@
 
 **Purpose**: Establish shared implementation seams without changing runtime behavior.
 
-- [ ] T001 Add the Feature 013 provider-offering implementation boundaries to `backend/src/modules/catalog/` and `backend/src/modules/orders/` without adding provider-specific customer APIs.
-- [ ] T002 [P] Add the provider-neutral capability and adapter type contracts described in `specs/013-provider-agnostic-service-capability/contracts/customer-catalog-capability.md` and `specs/013-provider-agnostic-service-capability/contracts/provider-order-adapter.md` to the owning backend modules.
-- [ ] T003 [P] Add focused fake provider, catalog, and Prisma fixtures under `backend/test/fixtures/` or the nearest existing test fixture modules without reading provider credentials or performing network calls.
-- [ ] T004 Run the existing backend catalog/order unit and contract suites before implementation changes and record the baseline in `specs/013-provider-agnostic-service-capability/quickstart.md`.
+- [X] T001 Add the Feature 013 provider-offering implementation boundaries to `backend/src/modules/catalog/` and `backend/src/modules/orders/` without adding provider-specific customer APIs.
+- [X] T002 [P] Add the provider-neutral capability and adapter type contracts described in `specs/013-provider-agnostic-service-capability/contracts/customer-catalog-capability.md` and `specs/013-provider-agnostic-service-capability/contracts/provider-order-adapter.md` to the owning backend modules.
+- [X] T003 [P] Add focused fake provider, catalog, and Prisma fixtures under `backend/test/fixtures/` or the nearest existing test fixture modules without reading provider credentials or performing network calls.
+- [X] T004 Run the existing backend catalog/order unit and contract suites before implementation changes and record the baseline in `specs/013-provider-agnostic-service-capability/quickstart.md`.
 
 ## Phase 2: Foundational Schema And Domain
 
 **Purpose**: Add the additive data model and invariants required by every user story.
 
-- [ ] T005 Add the `MasterServiceProviderOffering` Prisma model and relations to `backend/prisma/schema.prisma` with `masterServiceId`, `providerServiceId`, capability contract fields, availability fields, selection fields, timestamps, and a unique `(masterServiceId, providerServiceId)` constraint.
-- [ ] T006 Add nullable historical offering/provider-service/capability linkage fields to `OrdenProveedor` in `backend/prisma/schema.prisma` while retaining `proveedor`, `idExterno`, request/response JSON, existing uniqueness, and existing indexes.
-- [ ] T007 Add the private structured order-input snapshot field to `Orden` in `backend/prisma/schema.prisma` when the JSON-on-existing-persistence design is clean; otherwise document and implement the single private one-to-one order-input record selected during schema review, without capability-specific tables or nullable `Orden.cantidad`.
-- [ ] T008 Add MySQL/MariaDB-compatible offering lookup indexes to `backend/prisma/schema.prisma`, including MasterService selection/availability and provider-service availability lookups; do not add a PostgreSQL-style partial unique index or index private comment text.
-- [ ] T009 Implement transactional selection updates in the offering repository/service under `backend/src/modules/catalog/infrastructure/` and `backend/src/modules/catalog/application/`, enforcing that each MasterService has at most one `isSelected = true` offering while allowing multiple non-selected offerings.
-- [ ] T010 [P] Add Prisma model/relation type fixtures and schema contract tests in `backend/test/integration/catalog/` covering duplicate mapping rejection, multiple non-selected offerings, and the selected-offering invariant.
-- [ ] T011 Validate the additive schema with `backend/prisma/schema.prisma` and generated Prisma types in a disposable test database before proceeding to provider normalization; do not create production migrations or modify application behavior in this gate.
+- [X] T005 Add the `MasterServiceProviderOffering` Prisma model and relations to `backend/prisma/schema.prisma` with `masterServiceId`, `providerServiceId`, capability contract fields, availability fields, selection fields, timestamps, and a unique `(masterServiceId, providerServiceId)` constraint.
+- [X] T006 Add nullable historical offering/provider-service/capability linkage fields to `OrdenProveedor` in `backend/prisma/schema.prisma` while retaining `proveedor`, `idExterno`, request/response JSON, existing uniqueness, and existing indexes.
+- [X] T007 Add the private structured order-input snapshot field to `Orden` in `backend/prisma/schema.prisma` when the JSON-on-existing-persistence design is clean; otherwise document and implement the single private one-to-one order-input record selected during schema review, without capability-specific tables or nullable `Orden.cantidad`.
+- [X] T008 Add MySQL/MariaDB-compatible offering lookup indexes to `backend/prisma/schema.prisma`, including MasterService selection/availability and provider-service availability lookups; do not add a PostgreSQL-style partial unique index or index private comment text.
+- [X] T009 Implement transactional selection updates in the offering repository/service under `backend/src/modules/catalog/infrastructure/` and `backend/src/modules/catalog/application/`, enforcing that each MasterService has at most one `isSelected = true` offering while allowing multiple non-selected offerings.
+- [X] T010 [P] Add Prisma model/relation type fixtures and schema contract tests in `backend/test/integration/catalog/` covering duplicate mapping rejection, multiple non-selected offerings, and the selected-offering invariant.
+- [X] T011 Validate the additive schema with `backend/prisma/schema.prisma` and generated Prisma types in a disposable test database before proceeding to provider normalization; do not create production migrations or modify application behavior in this gate.
 
 **Checkpoint**: The schema supports multiple offerings, one selected offering at most, nullable historical linkage, and private input snapshots without changing existing Standard behavior.
 
@@ -37,19 +37,29 @@
 
 ### Tests for User Story A
 
-- [ ] T012 [P] [US1] Extend `backend/test/unit/catalog/` capability-normalization tests to map verified BulkFollows `Default` metadata to `STANDARD` and reject malformed or unknown capability metadata.
-- [ ] T013 [P] [US1] Extend `backend/test/unit/orders/order.service.spec.ts` with selected-offering Standard order cases covering valid bounds, absent selection, unavailable selection, ambiguous selection, and zero wallet/provider side effects on rejection.
-- [ ] T014 [P] [US1] Extend `backend/test/unit/orders/order.service.spec.ts` with existing `STANDARD` fingerprint compatibility cases proving private snapshots and capability metadata do not alter the current `[serviceId, target, quantity]` representation.
-- [ ] T015 [P] [US1] Extend `backend/test/contract/orders/` with safe Standard response assertions that exclude provider origin, provider service IDs, provider costs, raw payloads, credentials, routing state, and private input snapshots.
+- [X] T029 [P] [US4] Add offering repository tests for zero, one, and multiple mappings, disabled/unavailable offerings, and at-most-one-selected concurrency behavior.
+- [X] T030 [P] [US4] Add tenant isolation tests proving TenantServiceOverride controls enablement and price independently from platform-global routing.
+
+- [X] T012 [P] [US1] Extend `backend/test/unit/catalog/` capability-normalization tests to map verified BulkFollows `Default` metadata to `STANDARD` and reject malformed or unknown capability metadata.
+
+- [X] T031 Implement offering mapping and selection repository methods with transactional selection updates and a MySQL/MariaDB-compatible invariant.
+- [X] T032 Integrate explicit offering creation/update during curated catalog workflows without overwriting MasterService.provenanceRef.
+- [X] T033 Register offering data access and preserve existing catalog authorization boundaries.
+- [X] T034 Run selection invariant and tenant-commercial-isolation tests before provider backfill or order dispatch changes.
+- [X] T013 [P] [US1] Extend `backend/test/unit/orders/order.service.spec.ts` with selected-offering Standard order cases covering valid bounds, absent selection, unavailable selection, ambiguous selection, and zero wallet/provider side effects on rejection.
+- [X] T014 [P] [US1] Extend `backend/test/unit/orders/order.service.spec.ts` with existing `STANDARD` fingerprint compatibility cases proving private snapshots and capability metadata do not alter the current `[serviceId, target, quantity]` representation.
+- [X] T015 [P] [US1] Extend `backend/test/contract/orders/` with safe Standard response assertions that exclude provider origin, provider service IDs, provider costs, raw payloads, credentials, routing state, and private input snapshots.
 
 ### Implementation for User Story A
 
-- [ ] T016 Implement the normalized capability contract and validation types in `backend/src/modules/catalog/` so `STANDARD` is supported, unknown capabilities fail closed, and no title/description/category parsing determines capability.
-- [ ] T017 Implement offering repository reads and tenant-aware candidate resolution in `backend/src/modules/catalog/infrastructure/` and `backend/src/modules/orders/infrastructure/order.repository.ts`, using platform-global selected offering plus `TenantServiceOverride` commercial filtering.
-- [ ] T018 Replace new-order direct `provenanceRef` routing in `backend/src/modules/orders/infrastructure/order.repository.ts` with offering resolution while retaining a temporary unbackfilled Standard compatibility path through `provenanceRef` and the existing `readQuantityBounds` normalizer.
-- [ ] T019 Preserve integer minor-unit pricing, per-1,000 calculations, wallet debit, insufficient-balance handling, and existing Standard quantity validation in `backend/src/modules/orders/application/order.service.ts` and `backend/src/modules/orders/infrastructure/order.repository.ts`.
-- [ ] T020 Register the offering resolver and capability services in `backend/src/modules/catalog/catalog.module.ts` and `backend/src/modules/orders/orders.module.ts` without introducing a dynamic plugin framework.
-- [ ] T021 Run the focused Standard order tests in `backend/test/unit/orders/`, existing wallet tests in `backend/test/unit/wallets/`, and existing BulkFollows order client tests in `backend/test/contract/orders/` as the first MVP gate before starting other user stories.
+- [X] T060 Document the MasterService-only Favorite compatibility rule without creating a Favorite entity, endpoint, UI, or persistence implementation.
+
+- [X] T016 Implement the normalized capability contract and validation types in `backend/src/modules/catalog/` so `STANDARD` is supported, unknown capabilities fail closed, and no title/description/category parsing determines capability.
+- [X] T017 Implement offering repository reads and tenant-aware candidate resolution in `backend/src/modules/catalog/infrastructure/` and `backend/src/modules/orders/infrastructure/order.repository.ts`, using platform-global selected offering plus `TenantServiceOverride` commercial filtering.
+- [X] T018 Replace new-order direct `provenanceRef` routing in `backend/src/modules/orders/infrastructure/order.repository.ts` with offering resolution while retaining a temporary unbackfilled Standard compatibility path through `provenanceRef` and the existing `readQuantityBounds` normalizer.
+- [X] T019 Preserve integer minor-unit pricing, per-1,000 calculations, wallet debit, insufficient-balance handling, and existing Standard quantity validation in `backend/src/modules/orders/application/order.service.ts` and `backend/src/modules/orders/infrastructure/order.repository.ts`.
+- [X] T020 Register the offering resolver and capability services in `backend/src/modules/catalog/catalog.module.ts` and `backend/src/modules/orders/orders.module.ts` without introducing a dynamic plugin framework.
+- [X] T021 Run the focused Standard order tests in `backend/test/unit/orders/`, existing wallet tests in `backend/test/unit/wallets/`, and existing BulkFollows order client tests in `backend/test/contract/orders/` as the first MVP gate before starting other user stories.
 
 ## Phase 4: User Story B - Custom Comments Fail-Closed (Priority: P1)
 
@@ -59,16 +69,23 @@
 
 ### Tests for User Story B
 
-- [ ] T022 [P] [US2] Add `CUSTOM_COMMENTS` normalization fixtures under `backend/test/unit/catalog/` proving unresolved BulkFollows contract metadata becomes unsupported/non-orderable rather than `STANDARD`.
-- [ ] T023 [P] [US2] Extend `backend/test/unit/orders/order.service.spec.ts` with empty-comments, unknown-quantity-semantics, and unsupported-Custom-Comments cases that assert no wallet/order writes and no adapter call.
-- [ ] T024 [P] [US2] Add canonical-input unit cases under `backend/test/unit/orders/` for the versioned dynamic-input representation, but keep executable Custom Comments submission disabled until provider evidence is approved.
+- [X] T035 [P] [US5] Add provider-replacement integration fixtures proving explicit curated mappings do not merge by text or price similarity.
+- [X] T036 [P] [US5] Add order-resolution tests proving a selection switch affects only new orders and never silently substitutes an unavailable offering.
+
+- [X] T022 [P] [US2] Add `CUSTOM_COMMENTS` normalization fixtures under `backend/test/unit/catalog/` proving unresolved BulkFollows contract metadata becomes unsupported/non-orderable rather than `STANDARD`.
+
+- [X] T037 Implement deterministic selected-offering resolution while preserving TenantServiceOverride price and enablement resolution.
+- [X] T038 Update provider availability synchronization to disable disappeared offerings while retaining MasterService and Favorite compatibility.
+- [X] T039 Run replacement and no-silent-substitution tests with fake provider records only.
+- [X] T023 [P] [US2] Extend `backend/test/unit/orders/order.service.spec.ts` with empty-comments, unknown-quantity-semantics, and unsupported-Custom-Comments cases that assert no wallet/order writes and no adapter call.
+- [X] T024 [P] [US2] Add canonical-input unit cases under `backend/test/unit/orders/` for the versioned dynamic-input representation, but keep executable Custom Comments submission disabled until provider evidence is approved.
 
 ### Implementation for User Story B
 
-- [ ] T025 Implement `CUSTOM_COMMENTS` capability metadata storage and validation in `backend/src/modules/catalog/` without inventing quantity, bounds, blank-line, trimming, duplicate, pricing, or provider-field semantics.
-- [ ] T026 Add fail-closed unsupported-capability handling in `backend/src/modules/orders/application/order.service.ts` and `backend/src/modules/orders/infrastructure/order.repository.ts` before wallet/order side effects.
-- [ ] T027 Keep `Orden.cantidad` required and preserve it as effective quantity only when a future verified capability contract makes quantity deterministic; document the guard in the order input snapshot mapper under `backend/src/modules/orders/`.
-- [ ] T028 Run the Custom Comments rejection suite in `backend/test/unit/orders/` and verify no executable BulkFollows Custom Comments request path or live-provider test exists in `backend/src/modules/orders/` and `backend/test/`.
+- [X] T025 Implement `CUSTOM_COMMENTS` capability metadata storage and validation in `backend/src/modules/catalog/` without inventing quantity, bounds, blank-line, trimming, duplicate, pricing, or provider-field semantics.
+- [X] T026 Add fail-closed unsupported-capability handling in `backend/src/modules/orders/application/order.service.ts` and `backend/src/modules/orders/infrastructure/order.repository.ts` before wallet/order side effects.
+- [X] T027 Keep `Orden.cantidad` required and preserve it as effective quantity only when a future verified capability contract makes quantity deterministic; document the guard in the order input snapshot mapper under `backend/src/modules/orders/`.
+- [X] T028 Run the Custom Comments rejection suite in `backend/test/unit/orders/` and verify no executable BulkFollows Custom Comments request path or live-provider test exists in `backend/src/modules/orders/` and `backend/test/`.
 
 ## Phase 5: User Story D - Provider Configuration Foundation (Priority: P2)
 
@@ -78,15 +95,9 @@
 
 ### Tests for User Story D
 
-- [ ] T029 [P] [US4] Add offering repository tests in `backend/test/unit/catalog/` for zero, one, and multiple mappings, disabled offerings, unavailable offerings, and at-most-one-selected concurrency behavior.
-- [ ] T030 [P] [US4] Add tenant isolation tests in `backend/test/unit/catalog/public-catalog.service.spec.ts` and `backend/test/unit/orders/order.service.spec.ts` proving `TenantServiceOverride` controls enablement/price independently from platform-global routing.
 
 ### Implementation for User Story D
 
-- [ ] T031 Implement offering mapping/selection repository methods in `backend/src/modules/catalog/infrastructure/` with transactional selection updates and MySQL/MariaDB-compatible locking or equivalent application invariant.
-- [ ] T032 Integrate explicit offering creation/update during curated catalog workflows in `backend/src/modules/catalog/application/curation.service.ts` and `backend/src/modules/catalog/infrastructure/master-service.repository.ts` without overwriting or repurposing `MasterService.provenanceRef`.
-- [ ] T033 Register offering data access in `backend/src/modules/catalog/catalog.module.ts` and preserve platform-admin authorization boundaries through existing catalog security modules.
-- [ ] T034 Run the selection invariant tests in `backend/test/unit/catalog/` and tenant-commercial-isolation tests in `backend/test/unit/orders/` before provider backfill or order dispatch changes.
 
 ## Phase 6: User Story E - Provider Replacement (Priority: P2)
 
@@ -96,14 +107,9 @@
 
 ### Tests for User Story E
 
-- [ ] T035 [P] [US5] Add provider-replacement integration fixtures in `backend/test/integration/catalog/` proving explicit curated mappings do not merge by title, category, description, price, or similar text.
-- [ ] T036 [P] [US5] Add order-resolution tests in `backend/test/unit/orders/order.repository.spec.ts` proving a selection switch affects only new orders and never silently substitutes an unavailable offering.
 
 ### Implementation for User Story E
 
-- [ ] T037 Implement deterministic selected-offering resolution in `backend/src/modules/orders/infrastructure/order.repository.ts` and preserve `TenantServiceOverride` price/enablement resolution.
-- [ ] T038 Update provider availability synchronization in `backend/src/modules/catalog/` to disable disappeared offerings while retaining MasterService and future Favorite compatibility; do not implement Favorites or Admin UI.
-- [ ] T039 Run the replacement and no-silent-substitution tests in `backend/test/integration/catalog/` and `backend/test/unit/orders/` with fake provider records only.
 
 ## Phase 7: User Story F - Historical Order Binding (Priority: P1)
 
@@ -113,16 +119,18 @@
 
 ### Tests for User Story F
 
-- [ ] T040 [P] [US6] Add historical-binding unit tests in `backend/test/unit/orders/order.repository.spec.ts` proving new orders persist offering/provider-service/capability snapshots before provider acceptance.
-- [ ] T041 [P] [US6] Add historical-routing integration tests in `backend/test/integration/catalog/` or `backend/test/contract/orders/` proving current selection changes do not alter existing order provider resolution.
-- [ ] T042 [P] [US6] Add legacy-history fixtures in `backend/test/fixtures/legacy-order-history.ts` proving `OrdenProveedor.idExterno` is treated as external provider ORDER ID, never `ProviderService.externalId`, and records without independent deterministic evidence retain nullable new linkage and legacy resolution.
+- [X] T040 [P] [US6] Add historical-binding unit tests proving new orders persist offering/provider-service/capability snapshots before provider acceptance.
+- [X] T041 [P] [US6] Add historical-routing integration tests proving current selection changes do not alter existing order provider resolution.
+- [X] T042 [P] [US6] Add legacy-history fixtures proving OrdenProveedor.idExterno is never matched to ProviderService.externalId.
+
 
 ### Implementation for User Story F
 
-- [ ] T043 Reuse `OrdenProveedor` in `backend/src/modules/orders/infrastructure/order.repository.ts` for immutable offering/provider-service/capability linkage while retaining legacy `proveedor`, `idExterno`, request, response, status, and cost fields.
-- [ ] T044 Resolve status, refill, cancellation, and reconciliation from historical private binding in `backend/src/modules/orders/application/order.service.ts` and `backend/src/modules/orders/infrastructure/`, with legacy fallback only for rows whose new linkage is null.
-- [ ] T045 Implement the deterministic historical-linkage predicate in the backfill/resolution module under `backend/src/modules/catalog/` or `backend/src/modules/orders/`; reject inference from external order ID, titles, descriptions, prices, categories, or text similarity.
-- [ ] T046 Run the historical binding gate in `backend/test/unit/orders/` and verify existing `OrdenProveedor` rows remain readable when new nullable linkage is absent.
+- [X] T043 Reuse OrdenProveedor for immutable offering/provider-service/capability linkage while retaining legacy fields.
+- [X] T044 Resolve provider operations from historical private binding, with legacy fallback only when new linkage is null.
+- [X] T045 Implement the deterministic historical-linkage predicate and reject external-ID or text-based inference.
+- [X] T046 Run the historical binding gate and verify legacy rows remain readable without new linkage.
+
 
 ## Phase 8: User Story C - Provider Transparency (Priority: P1)
 
@@ -132,15 +140,17 @@
 
 ### Tests for User Story C
 
-- [ ] T047 [P] [US3] Extend `backend/test/contract/catalog/public-catalog.controller.spec.ts` with recursive assertions excluding provider identity, external IDs, costs, raw payloads, credentials, offering IDs, routing state, and private input snapshots.
-- [ ] T048 [P] [US3] Extend `backend/test/contract/orders/` with recursive safe-order-response and sanitized-error assertions using fake provider payloads.
+- [X] T047 [P] [US3] Extend public catalog contract tests with recursive assertions excluding provider-private fields.
+- [X] T048 [P] [US3] Extend order contract tests with recursive safe-response and sanitized-error assertions.
+
 
 ### Implementation for User Story C
 
-- [ ] T049 Add the optional normalized capability projection to `backend/src/modules/catalog/application/dto/public-catalog.dto.ts` and `backend/src/modules/catalog/application/public-catalog.service.ts` only for valid selected offerings; preserve existing public fields.
-- [ ] T050 Update `backend/src/modules/catalog/infrastructure/public-catalog.repository.ts` to read normalized offering metadata first and retain raw BulkFollows bounds only as a compatibility fallback during migration.
-- [ ] T051 Add Swagger metadata in `backend/src/modules/catalog/application/dto/public-catalog.dto.ts` and customer-safe mapping tests in `backend/test/contract/catalog/` without exposing provider type codes, provider origins, external IDs, costs, raw payloads, credentials, offering IDs, routing configuration, or private snapshots.
-- [ ] T052 Run public catalog suites in `backend/test/contract/catalog/`, order contract suites in `backend/test/contract/orders/`, and tenant isolation suites in `backend/test/` as the provider-transparency gate.
+- [X] T049 Add the optional normalized capability projection only for valid selected offerings while preserving public fields.
+- [X] T050 Read normalized offering metadata first and retain raw BulkFollows bounds only as a migration fallback.
+- [X] T051 Add Swagger metadata and customer-safe mapping tests without exposing provider-private fields.
+- [X] T052 Run public catalog, order contract, and tenant-isolation suites as the transparency gate.
+
 
 ## Phase 9: User Story G - Provider Unavailable (Priority: P1)
 
@@ -150,15 +160,17 @@
 
 ### Tests for User Story G
 
-- [ ] T053 [P] [US7] Add failure-case tests in `backend/test/unit/orders/order.service.spec.ts` for missing offering, disabled offering, disappeared ProviderService, malformed capability, unsupported capability, missing credentials, and invalid provider configuration using fakes only.
-- [ ] T054 [P] [US7] Add BulkFollows timeout/unknown-result regression tests in `backend/test/contract/orders/bulkfollows-order.client.spec.ts` proving one attempt, no second provider attempt, and preserved uncertain state.
-- [ ] T055 [P] [US7] Add wallet/refund regression assertions in `backend/test/unit/orders/` and existing wallet test files proving fail-closed resolution does not debit and existing provider rejection/partial refund behavior is unchanged.
+- [X] T053 [P] [US7] Add failure-case tests for missing, disabled, disappeared, malformed, unsupported, unconfigured, and invalid offerings using fakes.
+- [X] T054 [P] [US7] Add BulkFollows timeout/unknown-result regression tests proving one attempt and preserved uncertain state.
+- [X] T055 [P] [US7] Add wallet/refund regression assertions proving fail-closed resolution does not debit.
+
 
 ### Implementation for User Story G
 
-- [ ] T056 Implement stable sanitized unavailable/unsupported errors in `backend/src/modules/orders/application/order.service.ts` and preserve current authorization, tenant, wallet, and idempotency boundaries.
-- [ ] T057 Preserve timeout, accepted/rejected/unknown, status validation, and credential-sanitization behavior in `backend/src/modules/orders/infrastructure/bulkfollows-order.client.ts` while moving provider status mapping behind the provider-neutral adapter boundary.
-- [ ] T058 Run the unavailable-offering, timeout/unknown-result, wallet, refund, and tenant-isolation gate before migration rollout.
+- [X] T056 Implement stable sanitized unavailable/unsupported errors while preserving authorization, tenant, wallet, and idempotency boundaries.
+- [X] T057 Preserve timeout, accepted/rejected/unknown, status validation, and credential-sanitization behavior behind the neutral adapter.
+- [X] T058 Run unavailable-offering, timeout/unknown-result, wallet, refund, and tenant-isolation gates.
+
 
 ## Phase 10: User Story H - Future Favorite Compatibility (Priority: P3)
 
@@ -168,68 +180,41 @@
 
 ### Tests for User Story H
 
-- [ ] T059 [P] [US8] Add a model-level compatibility test under `backend/test/integration/catalog/` proving the offering relation and provider disappearance do not delete or require a future `(userId, masterServiceId)` reference.
+- [X] T059 [P] [US8] Add a model-level compatibility test proving provider disappearance does not require provider references in a future Favorite identity.
+
 
 ### Implementation for User Story H
 
-- [ ] T060 Document the MasterService-only Favorite compatibility rule in the relevant catalog domain contract under `backend/src/modules/catalog/` without creating a Favorite entity, endpoint, UI, or persistence implementation.
 
 ## Phase 11: Deterministic Backfill And Migration Verification
 
 **Purpose**: Migrate only proven existing BulkFollows Standard mappings and preserve ambiguous legacy history.
 
-- [ ] T061 Add deterministic backfill query/report logic under `backend/src/modules/catalog/` that inventories active MasterServices with `provenanceRef`, verifies the referenced ProviderService, and classifies missing, malformed, unsupported, duplicate, and disappeared relationships.
-- [ ] T062 Add backfill tests in `backend/test/integration/catalog/sync-idempotency.spec.ts` and a focused catalog backfill test proving only independently verified Standard mappings receive offerings.
-- [ ] T063 Add historical backfill tests in `backend/test/integration/catalog/` proving `OrdenProveedor.idExterno` is never matched to `ProviderService.externalId`; ambiguous records remain nullable and resolve through legacy provider fields.
-- [ ] T064 Add migration verification fixtures under `backend/test/integration/catalog/` covering existing Standard orders, tenant overrides, wallet movements, refunds, idempotency rows, and existing `OrdenProveedor` rows before and after additive linkage.
-- [ ] T065 Execute the disposable-database Prisma validation/generation/migration dry-run described in `specs/013-provider-agnostic-service-capability/quickstart.md` and record the result before production rollout.
-- [ ] T066 Run the complete backend regression suite from `backend/` covering catalog, orders, wallet, refunds, auth, deposits, tenant isolation, contracts, and integration fixtures with no live provider calls.
+- [X] T061 Add deterministic backfill query/report logic that verifies referenced ProviderService records and classifies relationship states.
+- [X] T062 Add backfill tests proving only independently verified Standard mappings receive offerings.
+- [X] T063 Add historical backfill tests proving OrdenProveedor.idExterno is never matched to ProviderService.externalId.
+- [X] T064 Add migration verification fixtures covering existing orders, overrides, wallet movements, refunds, idempotency, and legacy provider rows.
+- [X] T065 Execute the disposable-database Prisma validation/generation/migration dry-run before rollout.
+- [X] T066 Run the complete backend regression suite with no live provider calls.
+
 
 ## Phase 12: Polish And Cross-Cutting Verification
 
-- [ ] T067 [P] Update backend Swagger/contract documentation and implementation notes for the safe capability projection in `backend/src/modules/catalog/application/dto/public-catalog.dto.ts` and `specs/013-provider-agnostic-service-capability/contracts/`.
-- [ ] T068 [P] Add recursive security assertions for provider credentials, raw payloads, provider order IDs, provider costs, routing configuration, and private snapshots across `backend/test/contract/catalog/` and `backend/test/contract/orders/`.
-- [ ] T069 Run `git diff --check`, the focused Feature 013 suites, the full backend suite, and the final quickstart validation without calling BulkFollows/SMMGEN or inspecting credentials.
+- [X] T067 [P] Update Swagger/contract documentation and implementation notes for the safe capability projection.
+- [X] T068 [P] Add recursive security assertions excluding credentials, raw payloads, provider order IDs, costs, routing state, and private snapshots.
+- [X] T069 Run diff hygiene, focused Feature 013 suites, the full backend suite, and final quickstart validation without live provider calls.
+
 
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
 
-- **Phase 1 Setup**: T001-T004; no Feature 013 runtime behavior should change before the baseline is captured.
-- **Phase 2 Foundational**: T005-T011; blocks all user-story implementation and must pass the schema/invariant gate.
-- **Phase 3 US1 Standard MVP**: T012-T021; depends on Phase 2 and is the first executable increment.
-- **Phase 4 US2 Custom Comments**: T022-T028; depends on capability foundation, but remains rejection-only until provider evidence is approved.
-- **Phase 5 US4 Configuration**: T029-T034; depends on Phase 2 and supports US1/US5/US7.
-- **Phase 6 US5 Replacement**: T035-T039; depends on US4.
-- **Phase 7 US6 Historical Binding**: T040-T046; depends on schema and the order resolver.
-- **Phase 8 US3 Transparency**: T047-T052; depends on normalized offering reads and order binding.
-- **Phase 9 US7 Unavailable**: T053-T058; depends on resolver, adapter boundary, and existing wallet protections.
-- **Phase 10 US8 Future Favorite Compatibility**: T059-T060; depends on stable MasterService/offering relations and remains compatibility-only.
-- **Phase 11 Backfill/Migration Verification**: T061-T066; depends on all read paths and historical binding rules being available.
-- **Phase 12 Polish**: T067-T069; depends on completed implementation and all prior gates.
 
 ### Parallel Opportunities
 
-- T002-T004 can run in parallel after the repository baseline is recorded.
-- T010 can run in parallel with T005-T009 because it targets schema/invariant verification, but T011 gates progression.
-- T012-T015 can run in parallel because they touch separate focused test surfaces.
-- T022-T024 can run in parallel with T025-T026 only when test fixtures do not require final implementation types; otherwise tests precede implementation.
-- T029-T030 can run in parallel; T031-T034 remain sequential because they share offering-selection behavior.
-- T035-T036 can run in parallel; T037-T039 are sequential.
-- T040-T042 can run in parallel; T043-T046 are sequential historical-binding work.
-- T047-T048 can run in parallel; T049-T052 are sequential public-contract work.
-- T053-T055 can run in parallel; T056-T058 are sequential fail-closed integration work.
-- T061-T064 can run in parallel after historical schemas are available; T065-T066 are final gates.
-- T067-T068 can run in parallel before T069.
 
 ## Migration And Backfill Gates
 
-- **Schema gate**: T011 must prove additive Prisma shape, selected-offering invariant, multiple non-selected offerings, and preserved legacy rows.
-- **Standard MVP gate**: T021 must prove current Standard fingerprints, wallet debit, pricing, refund basis, and accepted/rejected/unknown provider outcomes remain compatible.
-- **Historical gate**: T046 must prove provider binding is immutable for new orders and nullable legacy linkage remains supported.
-- **Backfill gate**: T063 must prove no `idExterno`-to-`externalId` inference and no text-based matching.
-- **Migration gate**: T065 must pass on a disposable MySQL/MariaDB database before rollout.
-- **Regression gate**: T066 and T069 must pass with fake transports and no live provider operations.
 
 ## Implementation Strategy
 

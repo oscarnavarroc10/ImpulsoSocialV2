@@ -96,6 +96,41 @@ function setup(
 }
 
 describe('OrderService', () => {
+  it('rejects an absent selection before purchase and provider side effects', async () => {
+    const state = setup({ kind: 'unknown' });
+    jest.mocked(state.findCandidate).mockResolvedValue(null);
+    await expect(state.service.create({ serviceId: 'service-1', target: 'https://example.test', quantity: 1 }, principal, 'key-1234'))
+      .rejects.toBeInstanceOf(NotFoundException);
+    expect(state.createPurchase).not.toHaveBeenCalled();
+    expect(state.submit).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unavailable selection before purchase and provider side effects', async () => {
+    const state = setup({ kind: 'unknown' });
+    jest.mocked(state.findCandidate).mockResolvedValue(null);
+    await expect(state.service.create({ serviceId: 'service-1', target: 'https://example.test', quantity: 1 }, principal, 'key-1234'))
+      .rejects.toBeInstanceOf(NotFoundException);
+    expect(state.createPurchase).not.toHaveBeenCalled();
+    expect(state.submit).not.toHaveBeenCalled();
+  });
+
+  it('preserves the Standard fingerprint independently of private capability snapshots', async () => {
+    const state = setup({ kind: 'unknown' });
+    await state.service.create({ serviceId: 'service-1', target: 'https://example.test', quantity: 1501 }, principal, 'key-1234');
+    const input = jest.mocked(state.findByKey).mock.calls[0][0] as { fingerprint: string };
+    expect(input.fingerprint).toBe(replayOrder.requestFingerprint);
+    expect(input).not.toHaveProperty('capability');
+    expect(input).not.toHaveProperty('comments');
+  });
+
+  it('rejects unsupported Custom Comments before any wallet, order, or adapter call', async () => {
+    const state = setup({ kind: 'unknown' });
+    jest.mocked(state.findCandidate).mockResolvedValue(null);
+    await expect(state.service.create({ serviceId: 'comments', target: 'https://example.test', quantity: 1 }, principal, 'key-1234'))
+      .rejects.toBeInstanceOf(NotFoundException);
+    expect(state.createPurchase).not.toHaveBeenCalled();
+    expect(state.submit).not.toHaveBeenCalled();
+  });
   it('calculates ceiling per thousand with BigInt arithmetic', () => {
     const { total } = setup({ kind: 'unknown' });
     expect(total(15_000, 1501)).toBe(22_515);

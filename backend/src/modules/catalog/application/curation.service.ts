@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { AuditService } from '../infrastructure/audit.service';
 import { MasterServiceRepository } from '../infrastructure/master-service.repository';
@@ -9,6 +10,8 @@ import { ProviderServiceRepository } from '../infrastructure/provider-service.re
 import { StagedServiceRepository } from '../infrastructure/staged-service.repository';
 import { StagedCurationDto } from './dto/staged-curation.dto';
 import { CatalogPricingConfigurationRepository } from '../infrastructure/catalog-pricing-configuration.repository';
+import { MasterServiceProviderOfferingRepository } from '../infrastructure/master-service-provider-offering.repository';
+import { normalizeBulkFollowsCapability } from '../infrastructure/capability-normalizer';
 
 const PLATFORM_BASE_CURRENCY = 'PLATFORM_BASE_CURRENCY';
 const BULKFOLLOWS_RATE_CURRENCY = 'BULKFOLLOWS_RATE_CURRENCY';
@@ -136,6 +139,8 @@ export class CurationService {
     private readonly masterServiceRepository: MasterServiceRepository,
     private readonly auditService: AuditService,
     private readonly catalogPricingConfigurationRepository: CatalogPricingConfigurationRepository,
+    @Optional()
+    private readonly offeringRepository?: MasterServiceProviderOfferingRepository,
   ) {}
 
   async listPending(limit = 100) {
@@ -389,6 +394,18 @@ export class CurationService {
           approvalData,
         )
       : await this.masterServiceRepository.createCurated(approvalData);
+
+    const normalizedCapability = normalizeBulkFollowsCapability(
+      providerService.rawPayload,
+      providerService.externalId,
+    );
+    if (this.offeringRepository && normalizedCapability) {
+      await this.offeringRepository.createNormalized(
+        masterService.id,
+        providerService.id,
+        normalizedCapability,
+      );
+    }
 
     await this.stagedServiceRepository.updateReviewStatus(
       stagedService.id,

@@ -491,4 +491,12 @@ describe('Catalog sync integration: idempotency and curated-field protection', (
     expect(pendingRows[0].proposedCategoryId).toBe('cat-B');
     expect(pendingRows[0].proposedSocialNetwork).toBe('TikTok');
   });
+
+  it('does not infer an offering from matching titles or categories', async () => {
+    const harness = createHarness();
+    harness.setPayloads([{ externalId: 'svc-3', title: 'Same title', description: 'Same description', categoryId: 'cat-A', socialNetwork: 'Instagram', rawPayload: { rate: '1.00' } }]);
+    await harness.importOrchestrator.run();
+    expect(Array.from(harness.mastersById.values())).toHaveLength(0);
+    expect(Array.from(harness.stagedById.values())).toHaveLength(1);
+  });
 });

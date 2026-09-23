@@ -20,6 +20,9 @@ When a tenant-eligible MasterService has a valid selected offering, the API may 
 ```
 
 For unresolved or unsupported Custom Comments, the service must be non-orderable. It must not expose provider type codes, provider origin, external IDs, provider cost, raw payload, credentials, or routing configuration. The exact DTO field names remain subject to existing API naming conventions during implementation.
+The implementation projects capability data only from a valid selected offering. Offering IDs,
+provider identity, routing state, provider costs, raw payloads, credentials, and private snapshots
+remain internal and are excluded from the customer contract.
 
 ## Compatibility
 
