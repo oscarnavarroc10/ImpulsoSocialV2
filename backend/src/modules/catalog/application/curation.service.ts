@@ -12,6 +12,7 @@ import { StagedCurationDto } from './dto/staged-curation.dto';
 import { CatalogPricingConfigurationRepository } from '../infrastructure/catalog-pricing-configuration.repository';
 import { MasterServiceProviderOfferingRepository } from '../infrastructure/master-service-provider-offering.repository';
 import { normalizeBulkFollowsCapability } from '../infrastructure/capability-normalizer';
+import { normalizeSmmgenCapability } from '../infrastructure/smmgen-capability-normalizer';
 
 const PLATFORM_BASE_CURRENCY = 'PLATFORM_BASE_CURRENCY';
 const BULKFOLLOWS_RATE_CURRENCY = 'BULKFOLLOWS_RATE_CURRENCY';
@@ -325,15 +326,23 @@ export class CurationService {
       throw new NotFoundException('Provider service not found');
     }
 
-    const providerRate = readProviderRate(providerService.rawPayload);
-    const providerCostAmount = roundToMinorUnits(providerRate);
+    const isSmmgen = providerService.providerOrigin === 'smmgen';
+    const providerRate = isSmmgen
+      ? null
+      : readProviderRate(providerService.rawPayload);
+    const providerCostAmount = providerRate
+      ? roundToMinorUnits(providerRate)
+      : 0;
     const providerCostCurrency = readCurrency(BULKFOLLOWS_RATE_CURRENCY);
     const platformBaseCurrency = readCurrency(PLATFORM_BASE_CURRENCY);
 
     let defaultSellingPriceAmount: number;
     let defaultSellingPriceCurrency: string;
 
-    if (persistedMultiplier != null || dto.sellingPriceMultiplier != null) {
+    if (
+      !isSmmgen &&
+      (persistedMultiplier != null || dto.sellingPriceMultiplier != null)
+    ) {
       const exchangeRate =
         providerCostCurrency === platformBaseCurrency
           ? { unscaled: 1n, scale: 1n }
@@ -343,7 +352,7 @@ export class CurationService {
             );
 
       defaultSellingPriceAmount = calculateSellingPriceMinorUnits(
-        providerRate,
+        providerRate!,
         exchangeRate,
         persistedMultiplier ??
           parsePositiveDecimal(
@@ -395,10 +404,16 @@ export class CurationService {
         )
       : await this.masterServiceRepository.createCurated(approvalData);
 
-    const normalizedCapability = normalizeBulkFollowsCapability(
-      providerService.rawPayload,
-      providerService.externalId,
-    );
+    const normalizedCapability =
+      providerService.providerOrigin === 'smmgen'
+        ? normalizeSmmgenCapability(
+            providerService.rawPayload,
+            providerService.externalId,
+          )
+        : normalizeBulkFollowsCapability(
+            providerService.rawPayload,
+            providerService.externalId,
+          );
     if (this.offeringRepository && normalizedCapability) {
       await this.offeringRepository.createNormalized(
         masterService.id,

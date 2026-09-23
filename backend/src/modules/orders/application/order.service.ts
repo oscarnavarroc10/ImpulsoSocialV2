@@ -28,7 +28,10 @@ import {
 } from '../infrastructure/order.repository';
 import { BulkFollowsOrderClient } from '../infrastructure/bulkfollows-order.client';
 import { PROVIDER_ORDER_ADAPTER } from './provider-order-adapter';
-import type { ProviderOrderAdapter } from './provider-order-adapter';
+import type {
+  ProviderOrderAdapter,
+  ProviderOrderAdapterResolver,
+} from './provider-order-adapter';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_LIMIT = 20;
@@ -54,8 +57,10 @@ export class OrderService {
   constructor(
     private readonly repository: OrderRepository,
     private readonly provider: BulkFollowsOrderClient,
-    @Optional() @Inject(PROVIDER_ORDER_ADAPTER)
-    private readonly providerAdapter?: ProviderOrderAdapter,
+    @Optional()
+    @Inject(PROVIDER_ORDER_ADAPTER)
+    private readonly providerAdapter?:
+      ProviderOrderAdapter | ProviderOrderAdapterResolver,
   ) {}
 
   async list(
@@ -114,13 +119,12 @@ export class OrderService {
     const providerOrderId = lookup.providerOrderId?.trim();
     if (!providerOrderId)
       throw new ConflictException('Order has no provider reference');
-    if (!this.provider.isReady())
-      throw new ServiceUnavailableException('Provider is not configured');
-    if (lookup.providerOrigin && lookup.providerOrigin !== 'bulkfollows')
+    const adapter = this.resolveAdapter(lookup.providerOrigin);
+    if (!adapter)
       throw new ServiceUnavailableException('Provider is unavailable');
-    const result = this.providerAdapter
-      ? await this.providerAdapter.getStatus(providerOrderId)
-      : await this.provider.status(providerOrderId);
+    if (adapter.isReady && !adapter.isReady())
+      throw new ServiceUnavailableException('Provider is not configured');
+    const result = await adapter.getStatus(providerOrderId);
     if (result.kind !== 'ok')
       throw new BadGatewayException('Provider status is unavailable');
     const mapped =
@@ -204,9 +208,13 @@ export class OrderService {
         throw new ConflictException('Idempotency key conflict');
       return this.replay(existing, input);
     }
-    this.assertProviderReady();
     const candidate = await this.findCandidate(input);
     if (!candidate) throw new NotFoundException('Service not found');
+    const adapter = this.resolveAdapter(candidate.providerOrigin);
+    if (!adapter)
+      throw new ServiceUnavailableException('Provider is unavailable');
+    if (adapter.isReady && !adapter.isReady())
+      throw new ServiceUnavailableException('Provider is not configured');
     if (dto.quantity < candidate.min || dto.quantity > candidate.max)
       throw new UnprocessableEntityException(
         'Quantity is outside provider bounds',
@@ -250,9 +258,13 @@ export class OrderService {
   ): Promise<{ order: OrderResponseDto; statusCode: 200 | 201 | 202 }> {
     if (order.status !== 'pendiente')
       return { order: this.publicOrder(order), statusCode: 200 };
-    this.assertProviderReady();
     const candidate = await this.findCandidate(input);
     if (!candidate) return { order: this.publicOrder(order), statusCode: 200 };
+    const adapter = this.resolveAdapter(candidate.providerOrigin);
+    if (!adapter)
+      throw new ServiceUnavailableException('Provider is unavailable');
+    if (adapter.isReady && !adapter.isReady())
+      throw new ServiceUnavailableException('Provider is not configured');
     return this.claimAndSubmit(order, input, candidate, true);
   }
 
@@ -283,15 +295,28 @@ export class OrderService {
       if (!current) throw new InternalServerErrorException();
       return { order: this.publicOrder(current), statusCode: 200 };
     }
-    const result = await this.provider.submit(
-      candidate.externalId,
-      input.target,
-      input.quantity,
-    );
+    const adapter = this.resolveAdapter(candidate.providerOrigin);
+    if (!adapter)
+      throw new ServiceUnavailableException('Provider is unavailable');
+    if (adapter.isReady && !adapter.isReady())
+      throw new ServiceUnavailableException('Provider is not configured');
+    const result = await adapter.createOrder({
+      offering: {
+        offeringId: candidate.offeringId ?? '',
+        providerServiceId: candidate.providerServiceId ?? '',
+        providerOrigin: candidate.providerOrigin,
+        providerServiceExternalId: candidate.externalId,
+        capability: candidate.capabilityKey,
+        contractVersion: candidate.contractVersion ?? '',
+      },
+      target: input.target,
+      quantity: input.quantity,
+      idempotencyContext: input.fingerprint,
+    });
     if (result.kind === 'accepted') {
       const finalized = await this.repository.finalize(order.id, input, {
         kind: 'accepted',
-        providerId: result.orderId,
+        providerId: result.externalOrderId,
       });
       if (finalized)
         return { order: finalized, statusCode: replay ? 200 : 201 };
@@ -320,9 +345,42 @@ export class OrderService {
     };
   }
 
-  private assertProviderReady(): void {
-    if (!this.provider.isReady())
-      throw new InternalServerErrorException('Provider is not configured');
+  private resolveAdapter(
+    providerOrigin?: string | null,
+  ): ProviderOrderAdapter | null {
+    const origin = providerOrigin ?? 'bulkfollows';
+    if (this.providerAdapter && 'resolve' in this.providerAdapter)
+      return this.providerAdapter.resolve(origin);
+    if (this.providerAdapter) return this.providerAdapter;
+    if (origin !== 'bulkfollows') return null;
+    return {
+      isReady: () => this.provider.isReady(),
+      createOrder: async (request) => {
+        if (request.quantity === undefined)
+          return {
+            kind: 'rejected' as const,
+            message: 'Unsupported provider capability',
+          };
+        const result = await this.provider.submit(
+          request.offering.providerServiceExternalId,
+          request.target,
+          request.quantity,
+        );
+        if (result.kind === 'accepted')
+          return { kind: 'accepted' as const, externalOrderId: result.orderId };
+        if (result.kind === 'rejected')
+          return {
+            kind: 'rejected' as const,
+            message: 'Provider rejected the order',
+          };
+        return {
+          kind: 'uncertain' as const,
+          message: 'Provider result is unknown',
+        };
+      },
+      getStatus: (providerOrderId: string) =>
+        this.provider.status(providerOrderId),
+    };
   }
 
   private async findCandidate(

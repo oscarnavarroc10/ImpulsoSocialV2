@@ -20,12 +20,16 @@ export class SyncController {
   async runOnDemand(@Body() body: unknown) {
     const dto = SyncDto.validate(body);
 
-    if (dto.providerOrigin && dto.providerOrigin !== 'bulkfollows') {
-      throw new BadRequestException(
-        'providerOrigin must be "bulkfollows" for the current v1 integration',
-      );
+    if (
+      dto.providerOrigin &&
+      !['bulkfollows', 'smmgen'].includes(dto.providerOrigin)
+    ) {
+      throw new BadRequestException('providerOrigin is not supported');
     }
 
-    return this.syncService.runSync('on-demand');
+    return this.syncService.runSync(
+      'on-demand',
+      dto.providerOrigin ?? 'bulkfollows',
+    );
   }
 }

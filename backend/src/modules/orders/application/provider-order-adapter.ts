@@ -38,8 +38,16 @@ export type ProviderCreateOrderResult =
   | ProviderUncertainResult;
 
 export interface ProviderOrderAdapter {
-  createOrder(request: ProviderNeutralOrderRequest): Promise<ProviderCreateOrderResult>;
+  readonly providerOrigin?: string;
+  isReady?(): boolean;
+  createOrder(
+    request: ProviderNeutralOrderRequest,
+  ): Promise<ProviderCreateOrderResult>;
   getStatus(providerOrderId: string): Promise<ProviderStatusResult>;
+}
+
+export interface ProviderOrderAdapterResolver {
+  resolve(providerOrigin: string): ProviderOrderAdapter | null;
 }
 
 export type ProviderStatusResult =

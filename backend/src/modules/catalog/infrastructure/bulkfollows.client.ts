@@ -171,6 +171,7 @@ function mapToProviderServicePayload(
  */
 @Injectable()
 export class BulkFollowsClient implements ProviderCatalogClient {
+  readonly providerOrigin = BULKFOLLOWS_PROVIDER_ORIGIN;
   private readonly logger = new Logger(BulkFollowsClient.name);
 
   constructor(

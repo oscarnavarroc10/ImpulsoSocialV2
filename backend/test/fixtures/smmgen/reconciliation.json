@@ -1,0 +1,5 @@
+{
+  "complete": { "complete": true, "serviceIds": ["fixture-standard-01"] },
+  "partial": { "complete": false, "serviceIds": ["fixture-standard-01"] },
+  "malformed": { "complete": true, "serviceIds": "not-an-array" }
+}

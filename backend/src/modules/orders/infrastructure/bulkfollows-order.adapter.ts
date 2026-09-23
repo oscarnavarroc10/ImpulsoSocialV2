@@ -9,7 +9,13 @@ import { BulkFollowsOrderClient } from './bulkfollows-order.client';
 
 @Injectable()
 export class BulkFollowsOrderAdapter implements ProviderOrderAdapter {
+  readonly providerOrigin = 'bulkfollows';
+
   constructor(private readonly client: BulkFollowsOrderClient) {}
+
+  isReady(): boolean {
+    return this.client.isReady();
+  }
 
   async createOrder(
     request: ProviderNeutralOrderRequest,

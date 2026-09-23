@@ -56,14 +56,17 @@ export class SyncService {
   // finalizing update to success, partial, or failure). Import orchestration
   // is delegated to ImportOrchestrator.
 
-  async runSync(source: 'scheduled' | 'on-demand' = 'on-demand') {
+  async runSync(
+    source: 'scheduled' | 'on-demand' = 'on-demand',
+    providerOrigin = 'bulkfollows',
+  ) {
     const job = await this.prisma.syncJob.create({
       data: { source, status: 'running', summary: {} },
     });
 
     let summary;
     try {
-      summary = await this.importOrchestrator.run();
+      summary = await this.importOrchestrator.run(providerOrigin);
     } catch (err) {
       this.logger.error('Sync failed', err);
       await this.prisma.syncJob.update({

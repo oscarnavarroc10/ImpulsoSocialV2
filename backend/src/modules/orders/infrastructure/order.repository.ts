@@ -3,6 +3,7 @@ import { Prisma, EstadoOrden, TipoMovimientoSaldo } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { readQuantityBounds } from '../../catalog/infrastructure/quantity-bounds';
 import { normalizeBulkFollowsCapability } from '../../catalog/infrastructure/capability-normalizer';
+import { normalizeSmmgenCapability } from '../../catalog/infrastructure/smmgen-capability-normalizer';
 
 export interface PurchaseInput {
   tenantId: string;
@@ -75,7 +76,9 @@ const REFRESH_STATE_RANK: Record<EstadoOrden, number> = {
 export class InvalidProviderContractError extends Error {}
 export class InvalidRefundBasisError extends Error {}
 
-function isStandardContract(value: unknown): value is { min: number; max: number } {
+function isStandardContract(
+  value: unknown,
+): value is { min: number; max: number } {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const contract = value as Record<string, unknown>;
   return (
@@ -131,7 +134,12 @@ export class OrderRepository {
     ).masterServiceProviderOffering;
     const provider = await this.prisma.providerService.findUnique({
       where: { id: row.provenanceRef ?? '' },
-      select: { id: true, providerOrigin: true, externalId: true, rawPayload: true },
+      select: {
+        id: true,
+        providerOrigin: true,
+        externalId: true,
+        rawPayload: true,
+      },
     });
     const selectedOffering = offeringDelegate
       ? await offeringDelegate.findFirst({
@@ -152,7 +160,10 @@ export class OrderRepository {
     }
 
     const selectedProvider = selectedOffering?.providerService ?? provider;
-    if (!selectedProvider || selectedProvider.providerOrigin !== 'bulkfollows')
+    if (
+      !selectedProvider ||
+      !['bulkfollows', 'smmgen'].includes(selectedProvider.providerOrigin)
+    )
       return null;
     const normalized = selectedOffering
       ? selectedOffering.capabilityKey === 'STANDARD' &&
@@ -165,18 +176,32 @@ export class OrderRepository {
             contractVersion: selectedOffering.contractVersion,
           }
         : null
-      : normalizeBulkFollowsCapability(
-          selectedProvider.rawPayload,
-          selectedProvider.externalId,
-        );
+      : selectedProvider.providerOrigin === 'smmgen'
+        ? normalizeSmmgenCapability(
+            selectedProvider.rawPayload,
+            selectedProvider.externalId,
+          )
+        : normalizeBulkFollowsCapability(
+            selectedProvider.rawPayload,
+            selectedProvider.externalId,
+          );
     const bounds = normalized
       ? 'bounds' in normalized
         ? normalized.bounds
-        : normalized.contract.min !== undefined && normalized.contract.max !== undefined
+        : normalized.contract.min !== undefined &&
+            normalized.contract.max !== undefined
           ? { min: normalized.contract.min, max: normalized.contract.max }
           : null
-      : readQuantityBounds(selectedProvider.rawPayload, selectedProvider.externalId);
-    if (!bounds)
+      : readQuantityBounds(
+          selectedProvider.rawPayload,
+          selectedProvider.externalId,
+        );
+    if (
+      !bounds ||
+      (normalized &&
+        'contract' in normalized &&
+        normalized.contract.validationStatus !== 'supported')
+    )
       throw new InvalidProviderContractError();
     const override = row.configuracionesTienda[0];
     const complete =
@@ -193,7 +218,8 @@ export class OrderRepository {
       externalId: selectedProvider.externalId,
       providerOrigin: selectedProvider.providerOrigin,
       offeringId: selectedOffering?.id ?? null,
-      providerServiceId: selectedOffering?.providerServiceId ?? selectedProvider.id,
+      providerServiceId:
+        selectedOffering?.providerServiceId ?? selectedProvider.id,
       capabilityKey: 'STANDARD',
       contractVersion: normalized?.contractVersion ?? null,
       min: bounds.min,
@@ -284,7 +310,10 @@ export class OrderRepository {
     return {
       order: this.toView(orderFields),
       providerOrderId: ordenProveedor?.idExterno ?? null,
-      providerOrigin: ordenProveedor?.providerService?.providerOrigin ?? ordenProveedor?.proveedor ?? null,
+      providerOrigin:
+        ordenProveedor?.providerService?.providerOrigin ??
+        ordenProveedor?.proveedor ??
+        null,
     };
   }
 
@@ -428,9 +457,7 @@ export class OrderRepository {
       where: { id, tiendaId: tenantId, usuarioId: userId },
       select: this.viewSelect,
     });
-    return winner
-      ? { order: this.toView(winner), refunded: false }
-      : null;
+    return winner ? { order: this.toView(winner), refunded: false } : null;
   }
 
   async createPurchase(
@@ -530,7 +557,7 @@ export class OrderRepository {
       await tx.ordenProveedor.create({
         data: {
           ordenId: orderId,
-          proveedor: 'bulkfollows',
+          proveedor: candidate?.providerOrigin ?? 'bulkfollows',
           estadoExterno: 'sending',
           solicitudOriginal: { action: 'add', service, link: target, quantity },
           ...(candidate?.offeringId
