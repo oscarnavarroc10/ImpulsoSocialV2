@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type {
   ProviderCatalogClient,
@@ -17,6 +17,7 @@ import {
 import { BULKFOLLOWS_PROVIDER_ORIGIN } from '../infrastructure/bulkfollows.client';
 import { CategoryRepository } from '../infrastructure/category.repository';
 import { normalizeProviderTaxonomy } from '../application/taxonomy-normalizer';
+import { MasterServiceProviderOfferingRepository } from '../infrastructure/master-service-provider-offering.repository';
 
 export interface ImportOrchestratorSummary {
   total: number;
@@ -67,6 +68,8 @@ export class ImportOrchestrator {
     private readonly providerServiceRepository: ProviderServiceRepository,
     private readonly stagedServiceRepository: StagedServiceRepository,
     private readonly categoryRepository: CategoryRepository,
+    @Optional()
+    private readonly offeringRepository?: MasterServiceProviderOfferingRepository,
   ) {}
 
   async run(): Promise<ImportOrchestratorSummary> {
@@ -107,6 +110,9 @@ export class ImportOrchestrator {
     );
 
     if (preparedPayloads.length === 0) {
+      if (payloads.length === 0 && summary.failed === 0) {
+        await this.offeringRepository?.disableUnavailableProviderServices([]);
+      }
       this.logDuration('Total import', totalStartedAt, summary.total);
       return summary;
     }
@@ -385,6 +391,12 @@ export class ImportOrchestrator {
       stagedWritesStartedAt,
       stagedItemsToCreate.length + stagedItemsToUpdate.length,
     );
+
+    if (this.offeringRepository && summary.failed === 0) {
+      await this.offeringRepository.disableUnavailableProviderServices(
+        providerServicesToStage.map((service) => service.id),
+      );
+    }
 
     this.logDuration('Total import', totalStartedAt, summary.total);
 

@@ -299,6 +299,9 @@ describe('PublicCatalogRepository', () => {
       where: {
         status: 'active',
         isVisible: true,
+        socialNetwork: {
+          in: ['Instagram', 'TikTok', 'YouTube', 'Facebook'],
+        },
         NOT: {
           configuracionesTienda: {
             some: { tenantId: 'tenant-1', isEnabled: false },
@@ -355,6 +358,9 @@ describe('PublicCatalogRepository', () => {
         where: {
           status: 'active',
           isVisible: true,
+          socialNetwork: {
+            in: ['Instagram', 'TikTok', 'YouTube', 'Facebook'],
+          },
           NOT: {
             configuracionesTienda: {
               some: { tenantId: 'tenant-1', isEnabled: false },
@@ -364,5 +370,24 @@ describe('PublicCatalogRepository', () => {
         },
       }),
     );
+  });
+
+  it('keeps tenant price and enablement scoped while capability stays platform-global', async () => {
+    const repository = {
+      findActiveTenantIdBySlug: jest.fn().mockResolvedValue('tenant-2'),
+      findMany: jest.fn().mockResolvedValue([{
+        id: 'service-1', title: 'Followers', description: 'Description', socialNetwork: 'Instagram', categoryId: 'category-1',
+        defaultSellingPriceAmount: 1000, defaultSellingPriceCurrency: 'MXN',
+        category: { id: 'category-1', name: 'Followers', description: null },
+        tenantOverride: { sellingPriceAmount: 1400, sellingPriceCurrency: 'MXN' },
+        quantityBounds: { min: 10, max: 100 },
+        capability: { key: 'STANDARD', input: { target: 'required', quantity: 'required' }, quantity: { min: 10, max: 100 } },
+      }]),
+      count: jest.fn().mockResolvedValue(1),
+      findFacetRows: jest.fn().mockResolvedValue([]),
+    };
+    const service = new PublicCatalogService({ get: jest.fn().mockReturnValue('tenant-2') } as never, repository as never);
+    await expect(service.list({})).resolves.toMatchObject({ items: [{ sellingPrice: { amount: 1400 }, capability: { key: 'STANDARD' } }] });
+    expect(repository.findMany).toHaveBeenCalledWith('tenant-2', expect.anything(), 0, 20);
   });
 });

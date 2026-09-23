@@ -45,6 +45,7 @@ function mapRowToDto(row: PublicCatalogRow): PublicCatalogServiceDto {
     minQuantity: row.quantityBounds?.min ?? null,
     maxQuantity: row.quantityBounds?.max ?? null,
     ...(row.providerMetadata ? { serviceMetadata: row.providerMetadata } : {}),
+    ...(row.capability ? { capability: row.capability } : {}),
   };
 }
 

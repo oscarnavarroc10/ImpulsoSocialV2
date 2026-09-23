@@ -27,6 +27,11 @@ export interface PublicCatalogRow {
   } | null;
   quantityBounds: { min: number; max: number } | null;
   providerMetadata?: { refill: boolean; cancel: boolean } | null;
+  capability?: {
+    key: 'STANDARD';
+    input: { target: 'required'; quantity: 'required' };
+    quantity: { min: number; max: number };
+  } | null;
 }
 
 export interface PublicCatalogFacetRow {
@@ -102,6 +107,7 @@ function mapRow(
     rawPayload: unknown;
   } | null,
   category: PublicCatalogRow['category'] | undefined,
+  capability: PublicCatalogRow['capability'] = null,
 ): PublicCatalogRow {
   if (!category) {
     throw new Error(`Category not found for public catalog service ${row.id}`);
@@ -124,10 +130,12 @@ function mapRow(
         }
       : null,
     quantityBounds:
-      provider?.providerOrigin === 'bulkfollows'
+      capability?.quantity ??
+      (provider?.providerOrigin === 'bulkfollows'
         ? readQuantityBounds(provider.rawPayload, provider.externalId)
-        : null,
+        : null),
     providerMetadata: readProviderMetadata(provider),
+    capability,
   };
 }
 
@@ -185,11 +193,13 @@ export class PublicCatalogRepository {
     const categories = await this.findCategories(
       rows.map((row) => row.categoryId),
     );
+    const capabilities = await this.findCapabilities(rows.map((row) => row.id));
     return rows.map((row) =>
       mapRow(
         row,
         providers.get(row.provenanceRef ?? '') ?? null,
         categories.get(row.categoryId),
+        capabilities.get(row.id) ?? null,
       ),
     );
   }
@@ -226,10 +236,58 @@ export class PublicCatalogRepository {
     if (!row) return null;
     const providers = await this.findProviders([row]);
     const categories = await this.findCategories([row.categoryId]);
+    const capabilities = await this.findCapabilities([row.id]);
     return mapRow(
       row,
       providers.get(row.provenanceRef ?? '') ?? null,
       categories.get(row.categoryId),
+      capabilities.get(row.id) ?? null,
+    );
+  }
+
+  private async findCapabilities(masterServiceIds: string[]) {
+    const delegate = (
+      this.prisma as PrismaService & {
+        masterServiceProviderOffering?: {
+          findMany: (args: unknown) => Promise<Array<Record<string, unknown>>>;
+        };
+      }
+    ).masterServiceProviderOffering;
+    if (!delegate || masterServiceIds.length === 0)
+      return new Map<string, PublicCatalogRow['capability']>();
+
+    const offerings = await delegate.findMany({
+      where: {
+        masterServiceId: { in: masterServiceIds },
+        isEnabled: true,
+        isAvailable: true,
+        isSelected: true,
+        capabilityKey: 'STANDARD',
+      },
+      select: { masterServiceId: true, capabilityKey: true, contract: true },
+    });
+    return new Map(
+      offerings.flatMap((offering) => {
+        const contract = offering.contract;
+        if (!contract || typeof contract !== 'object' || Array.isArray(contract)) return [];
+        const value = contract as Record<string, unknown>;
+        if (
+          value.validationStatus !== 'supported' ||
+          value.quantityMode !== 'required' ||
+          !Number.isSafeInteger(value.min) ||
+          !Number.isSafeInteger(value.max) ||
+          (value.min as number) <= 0 ||
+          (value.max as number) < (value.min as number)
+        ) return [];
+        return [[
+          String(offering.masterServiceId),
+          {
+            key: 'STANDARD' as const,
+            input: { target: 'required' as const, quantity: 'required' as const },
+            quantity: { min: value.min as number, max: value.max as number },
+          },
+        ] as const];
+      }),
     );
   }
 

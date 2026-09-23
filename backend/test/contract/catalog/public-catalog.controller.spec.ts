@@ -19,6 +19,12 @@ const FORBIDDEN_KEYS = [
   'externalId',
   'rawPayload',
   'metadata',
+  'offeringId',
+  'providerServiceId',
+  'providerOrderId',
+  'routingState',
+  'privateInputSnapshot',
+  'credentials',
 ];
 
 function assertNoForbiddenKeys(value: unknown): void {
@@ -177,6 +183,15 @@ describe('PublicCatalogController (contract)', () => {
       'amount',
       'currency',
     ]);
+    assertNoForbiddenKeys(response.body);
+  });
+
+  it('strips provider-private fields recursively from capability projections', async () => {
+    publicCatalogService.list.mockResolvedValue({
+      items: [{ ...sampleService, capability: { key: 'STANDARD', input: { target: 'required', quantity: 'required' }, quantity: { min: 1, max: 10 } } }],
+      pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+    const response = await request(app.getHttpServer()).get('/v1/catalog/services').expect(200);
     assertNoForbiddenKeys(response.body);
   });
 

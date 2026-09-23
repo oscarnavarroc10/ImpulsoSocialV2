@@ -34,6 +34,9 @@ import { PublicCatalogRepository } from './infrastructure/public-catalog.reposit
 import { PublicCatalogService } from './application/public-catalog.service';
 import { CatalogPricingConfigurationRepository } from './infrastructure/catalog-pricing-configuration.repository';
 import { PublicCatalogController } from './presentation/public-catalog.controller';
+import { MasterServiceProviderOfferingRepository } from './infrastructure/master-service-provider-offering.repository';
+import { MasterServiceProviderOfferingService } from './application/master-service-provider-offering.service';
+import { ProviderOfferingBackfillService } from './application/provider-offering-backfill.service';
 
 // Minimal fail-closed adapter for missing external authorization integration.
 /*const FailClosedAuthProvider = {
@@ -88,6 +91,9 @@ import { PublicCatalogController } from './presentation/public-catalog.controlle
     PublicCatalogRepository,
     PublicCatalogService,
     CatalogPricingConfigurationRepository,
+    MasterServiceProviderOfferingRepository,
+    MasterServiceProviderOfferingService,
+    ProviderOfferingBackfillService,
   ],
   exports: [
     ProviderServiceRepository,
@@ -107,6 +113,9 @@ import { PublicCatalogController } from './presentation/public-catalog.controlle
     SyncService,
     PROVIDER_CATALOG_CLIENT,
     CatalogPricingConfigurationRepository,
+    MasterServiceProviderOfferingRepository,
+    MasterServiceProviderOfferingService,
+    ProviderOfferingBackfillService,
   ],
 })
 export class CatalogModule {}
